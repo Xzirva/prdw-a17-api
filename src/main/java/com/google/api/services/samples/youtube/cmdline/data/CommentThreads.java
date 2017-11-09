@@ -52,6 +52,7 @@ public class CommentThreads {
      *
      * @param args command line args (not used).
      */
+    // channel:  video: Wtw2egfjq8A
     public static void main(String[] args) {
 
         // This OAuth 2.0 access scope allows for full read/write access to the
@@ -68,20 +69,20 @@ public class CommentThreads {
 
             // Prompt the user for the ID of a channel to comment on.
             // Retrieve the channel ID that the user is commenting to.
-            String channelId = getChannelId();
+            String channelId = "UCupvZG-5ko_eiXAupbDfxWw";
             System.out.println("You chose " + channelId + " to subscribe.");
 
             // Prompt the user for the ID of a video to comment on.
             // Retrieve the video ID that the user is commenting to.
-            String videoId = getVideoId();
+            String videoId = "Wtw2egfjq8A";
             System.out.println("You chose " + videoId + " to subscribe.");
 
             // Prompt the user for the comment text.
             // Retrieve the text that the user is commenting.
-            String text = getText();
-            System.out.println("You chose " + text + " to subscribe.");
+            //String text = getText();
+            //System.out.println("You chose " + text + " to subscribe.");
 
-
+            /*
             // Insert channel comment by omitting videoId.
             // Create a comment snippet with text.
             CommentSnippet commentSnippet = new CommentSnippet();
@@ -132,9 +133,10 @@ public class CommentThreads {
             System.out
                     .println("\n-------------------------------------------------------------\n");
 
-
+            */
             // Call the YouTube Data API's commentThreads.list method to
             // retrieve video comment threads.
+            CommentSnippet snippet = new CommentSnippet();
             CommentThreadListResponse videoCommentsListResponse = youtube.commentThreads()
                     .list("snippet").setVideoId(videoId).setTextFormat("plainText").execute();
             List<CommentThread> videoComments = videoCommentsListResponse.getItems();
@@ -153,26 +155,27 @@ public class CommentThreads {
                     System.out
                             .println("\n-------------------------------------------------------------\n");
                 }
-                CommentThread firstComment = videoComments.get(0);
+
+                /*CommentThread firstComment = videoComments.get(0);
                 firstComment.getSnippet().getTopLevelComment().getSnippet()
                         .setTextOriginal("updated");
                 CommentThread videoCommentUpdateResponse = youtube.commentThreads()
-                        .update("snippet", firstComment).execute();
+                        .update("snippet", firstComment).execute();*/
                 // Print information from the API response.
-                System.out
+                /*System.out
                         .println("\n================== Updated Video Comment ==================\n");
                 snippet = videoCommentUpdateResponse.getSnippet().getTopLevelComment()
                         .getSnippet();
                 System.out.println("  - Author: " + snippet.getAuthorDisplayName());
                 System.out.println("  - Comment: " + snippet.getTextDisplay());
                 System.out
-                        .println("\n-------------------------------------------------------------\n");
+                        .println("\n-------------------------------------------------------------\n");*/
 
             }
 
             // Call the YouTube Data API's commentThreads.list method to
             // retrieve channel comment threads.
-            CommentThreadListResponse channelCommentsListResponse = youtube.commentThreads()
+            /*CommentThreadListResponse channelCommentsListResponse = youtube.commentThreads()
                     .list("snippet").setChannelId(channelId).setTextFormat("plainText").execute();
             List<CommentThread> channelComments = channelCommentsListResponse.getItems();
 
@@ -205,7 +208,7 @@ public class CommentThreads {
                 System.out
                         .println("\n-------------------------------------------------------------\n");
 
-            }
+            }*/
 
         } catch (GoogleJsonResponseException e) {
             System.err.println("GoogleJsonResponseException code: " + e.getDetails().getCode()
