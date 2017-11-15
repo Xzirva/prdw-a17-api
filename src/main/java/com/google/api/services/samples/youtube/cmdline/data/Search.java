@@ -172,9 +172,9 @@ public class Search {
                 Thumbnail thumbnail = singleVideo.getSnippet().getThumbnails().getDefault();
 
                 System.out.println(" Video Id" + rId.getVideoId());
-                System.out.println(" Title: " + singleVideo.getSnippet().getTitle());
-                System.out.println(" Thumbnail: " + thumbnail.getUrl());
-                System.out.println("\n-------------------------------------------------------------\n");
+//                System.out.println(" Title: " + singleVideo.getSnippet().getTitle());
+//                System.out.println(" Thumbnail: " + thumbnail.getUrl());
+//                System.out.println("\n-------------------------------------------------------------\n");
             }
         }
     }

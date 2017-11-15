@@ -1,45 +1,22 @@
-/*
- * Copyright (c) 2013 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License. You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
- */
-
 package com.google.api.services.samples.youtube.cmdline.data;
-
-import java.io.*;
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import com.google.api.client.repackaged.com.google.common.base.Joiner;
 import com.google.api.services.samples.youtube.cmdline.Auth;
 import com.google.api.services.youtube.YouTube;
-import com.google.api.services.youtube.model.Comment;
-import com.google.api.services.youtube.model.CommentSnippet;
-import com.google.api.services.youtube.model.CommentThread;
-import com.google.api.services.youtube.model.CommentThreadSnippet;
-import com.google.api.services.youtube.model.CommentThreadListResponse;
+import com.google.api.services.youtube.model.*;
 import com.google.common.collect.Lists;
 
-/**
- * This sample creates and manages top-level comments by:
- *
- * 1. Creating a top-level comments for a video and a channel via "commentThreads.insert" method.
- * 2. Retrieving the top-level comments for a video and a channel via "commentThreads.list" method.
- * 3. Updating an existing comments via "commentThreads.update" method.
- *
- * @author Ibrahim Ulukaya
- */
-public class CommentThreads {
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Stack;
+
+public class Videos {
 
     /**
      * Define a global instance of a YouTube object, which will be used to make
@@ -82,13 +59,13 @@ public class CommentThreads {
             String videoId = "AZ8mB-eudv0";
             System.out.println("You chose " + videoId + " to subscribe.");
 
-            List<CommentThread> channelComments = getCommentThreads(channelId, "channel");
-            String prettyStringToSave = "";
-            BufferedWriter out = new BufferedWriter(new FileWriter("fetched-data"+"CNN"+ System.nanoTime()+".json"));
-            for(CommentThread c : channelComments) {
-                prettyStringToSave += c.toPrettyString();
+            List<Video> channelComments = getVideos(channelId);
+            StringBuilder prettyStringToSave = new StringBuilder("");
+            BufferedWriter out = new BufferedWriter(new FileWriter("fetched-data"+"CNN"+"videos"+ System.nanoTime()+".json"));
+            for(Video c : channelComments) {
+                prettyStringToSave.append(c.toPrettyString());
             }
-            out.write(prettyStringToSave);
+            out.write(prettyStringToSave.toString());
             if (channelComments.isEmpty()) {
                 System.out.println("Can't get channel comments.");
             } else {
@@ -96,7 +73,7 @@ public class CommentThreads {
                 System.out
                         .println("\n================== Returned Channel Comments" + channelComments.size() + " ==================\n");
 
-//                for (CommentThread channelComment : channelComments) {
+//                for (Video channelComment : channelComments) {
 //                    snippet = channelComment.getSnippet().getTopLevelComment()
 //                            .getSnippet();
 //                    System.out.println("  - Author: " + snippet.getAuthorDisplayName());
@@ -121,27 +98,46 @@ public class CommentThreads {
         }
     }
 
-    private static List<CommentThread> getCommentThreads(String parentId, String type) throws IOException {
-        CommentThreadListResponse CommentsListResponse;
-        String nextPageToken = "";
-        List<CommentThread> comments = new ArrayList<CommentThread>();
-        while(nextPageToken != null) {
-            System.out.println("Fetching CommentsThreads");
-                if (type.equals("video"))
-                    CommentsListResponse = (nextPageToken.equals("") ? youtube.commentThreads().list("snippet")
-                            .setVideoId(parentId).setTextFormat("plaintext").setOrder("time").execute() :
-                            youtube.commentThreads().list("snippet").setPageToken(nextPageToken)
-                                    .setVideoId(parentId).setOrder("time").execute());
-                else
-                    CommentsListResponse = (nextPageToken.equals("") ? youtube.commentThreads().list("snippet")
-                            .setChannelId(parentId).setTextFormat("plaintext").setOrder("time").execute() :
-                            youtube.commentThreads().list("snippet").setPageToken(nextPageToken)
-                                    .setChannelId(parentId).setOrder("time").execute());
-                comments.addAll(CommentsListResponse.getItems());
-            System.out.println("Total Results: " + CommentsListResponse.getPageInfo().getTotalResults() + "/" +
-                    "\nCurrentPageResult: " + CommentsListResponse.getPageInfo().getResultsPerPage());
-            nextPageToken = CommentsListResponse.getNextPageToken();
-        }
-        return comments;
+    private static List<Video> getVideos(String channelId) throws Exception {
+        YouTube.Search.List playlistItemRequest = youtube.search ().list("id").setChannelId(channelId).setType("video");
+        String parts = "snippet,statistics,contentDetails,topicDetails";
+        String nextToken = "";
+        System.out.println("Fetching Videos. Channel: " + channelId);
+        Stack<String> video_ids = new Stack<String>();
+        Joiner stringJoiner = Joiner.on(',');
+        List<Video> videos = new ArrayList<Video>();
+        // Call the API one or more times to retrieve all items in the
+        // list. As long as the API response returns a nextPageToken,
+        // there are still more items to retrieve.
+        do {
+            playlistItemRequest.setPageToken(nextToken);
+            playlistItemRequest.setFields("items(id),nextPageToken,pageInfo");
+            SearchListResponse playlistItemResult = playlistItemRequest.execute();
+            System.out.println("Total Results: " + playlistItemResult.getPageInfo().getTotalResults() + "/" +
+                    "\nCurrentPageResult: " + playlistItemResult.getPageInfo().getResultsPerPage());
+            List<SearchResult> items = playlistItemResult.getItems();
+            for(SearchResult item : items) {
+//                if(video_ids.size() < 50)
+                video_ids.add(item.getId().getVideoId());
+//                else {
+            }
+            String videoId = stringJoiner.join(video_ids);
+            // Call the YouTube Data API's youtube.videos.list method to
+            // retrieve the resources that represent the specified videos.
+            String videoNextToken = "";
+            do {
+                YouTube.Videos.List listVideosRequest = youtube.videos().list(parts).setId(videoId);
+                listVideosRequest.setPageToken(videoNextToken);
+                VideoListResponse listResponse = listVideosRequest.execute();
+                videos.addAll(listResponse.getItems());
+                videoNextToken = listResponse.getNextPageToken();
+                video_ids.clear();
+//                }
+            }while(videoNextToken != null);
+//            }
+
+            nextToken = playlistItemResult.getNextPageToken();
+        } while (nextToken != null);
+        return videos;
     }
 }
