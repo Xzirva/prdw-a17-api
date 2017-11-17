@@ -34,7 +34,7 @@ public class Videos {
 
         Credential credential = null;
         try {
-            credential = Auth.authorize(scopes, "commentthreads");
+            credential = Auth.authorize(scopes, "videos");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -58,45 +58,7 @@ public class Videos {
             String channelId = "UCupvZG-5ko_eiXAupbDfxWw";
             System.out.println("You chose " + channelId + " to subscribe.");
 
-            // Prompt the user for the ID of a video to comment on.
-            // Retrieve the video ID that the user is commenting to.
-            String videoId = "AZ8mB-eudv0";
-            System.out.println("You chose " + videoId + " to subscribe.");
-
-            List<Video> channelComments = getVideos(channelId);
-            StringBuilder prettyStringToSave = new StringBuilder("");
-            BufferedWriter out = new BufferedWriter(new FileWriter("fetched-data"+"CNN"+"videos"+ System.nanoTime()+".json"));
-            for(Video c : channelComments) {
-                prettyStringToSave.append(c.toPrettyString());
-            }
-            out.write(prettyStringToSave.toString());
-            if (channelComments.isEmpty()) {
-                System.out.println("Can't get channel comments.");
-            } else {
-                // Print information from the API response.
-                System.out
-                        .println("\n================== Returned Channel Comments" + channelComments.size() + " ==================\n");
-
-//                for (Video channelComment : channelComments) {
-//                    snippet = channelComment.getSnippet().getTopLevelComment()
-//                            .getSnippet();
-//                    System.out.println("  - Author: " + snippet.getAuthorDisplayName());
-//                    System.out.println("  - Comment: " + snippet.getTextDisplay());
-//                    System.out.println("  - Likes: " + snippet.getLikeCount());
-//                    System.out.println("  - Likes: " + snippet.getPublishedAt());
-//                    System.out
-//                            .println("\n-------------------------------------------------------------\n");
-//                }
-            }
-
-        } catch (GoogleJsonResponseException e) {
-            System.err.println("GoogleJsonResponseException code: " + e.getDetails().getCode()
-                    + " : " + e.getDetails().getMessage());
-            e.printStackTrace();
-
-        } catch (IOException e) {
-            System.err.println("IOException: " + e.getMessage());
-            e.printStackTrace();
+            insertVideos(channelId);
         } catch (Throwable t) {
             System.err.println("Throwable: " + t.getMessage());
             t.printStackTrace();
@@ -159,30 +121,37 @@ public class Videos {
             cal.add(Calendar.DAY_OF_MONTH, -1);
             List<Video> videos = getVideos(channelId, new DateTime(cal.getTime()));
             Connection conn = AsterDatabaseInterface.connect();
-            String query = " INSERT INTO \"prdwa17_staging\".\"videos\" (\"id\", \"channelid\", \"title\", \"description\", \"publishedat\", \"viewcount\", \"commentcount\", \"likecount\", \"dislikecount\", \"favoritecount\"," +
-                    " \"subscribercount\", \"videocount\", \"categoryid\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\", \"keywords\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+            String query = "INSERT INTO \"prdwa17_staging\".\"videos\" (\"id\", \"channelid\", \"title\", \"description\", \"publishedat\", \"viewcount\", \"commentcount\", \"likecount\", \"dislikecount\", \"favoritecount\", \"categoryid\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+ 	
+ 
             PreparedStatement ps = conn.prepareStatement(query);
-            ps.setString(1, channel.getId());
-            ps.setString(2, channel.getSnippet().getTitle() );
-            ps.setString(3, channel.getSnippet().getDescription());
-            ps.setTimestamp(4, new Timestamp(channel.getSnippet().getPublishedAt().getValue()));
-            ps.setLong (5, Long.parseLong(channel.getStatistics().getViewCount().toString()));
-            ps.setLong(6, Long.parseLong(channel.getStatistics().getCommentCount().toString()));
-            ps.setLong(7, Long.parseLong(channel.getStatistics().getSubscriberCount().toString()));
-            ps.setLong (8, Long.parseLong(channel.getStatistics().getVideoCount().toString()));
-            List<String> categories = channel.getTopicDetails().getTopicCategories();
-            for(int i = 0; i<3; i++) {
-                try {
-                    ps.setString(9+i, categories.get(i));
-                } catch (IndexOutOfBoundsException e) {
-                    ps.setString(9+i, "");
-                }
+            for(Video video : videos){
+                ps.setString(1, video.getId());
+                ps.setString(2, video.getSnippet().getChannelId());
+                ps.setString(3, video.getSnippet().getTitle());
+                ps.setString(4, video.getSnippet().getDescription());
+                ps.setTimestamp(5, new Timestamp(video.getSnippet().getPublishedAt().getValue()));
+                ps.setLong (6, Long.parseLong(video.getStatistics().getViewCount().toString()));
+                ps.setLong(7, Long.parseLong(video.getStatistics().getCommentCount().toString()));
+                ps.setLong(8, Long.parseLong(video.getStatistics().getLikeCount().toString()));
+                ps.setLong (9, Long.parseLong(video.getStatistics().getDislikeCount().toString()));
+                ps.setLong (10, Long.parseLong(video.getStatistics().getFavoriteCount().toString()));
+                ps.setString(11, video.getSnippet().getCategoryId());
+                  
+                List<String> categories = video.getTopicDetails().getTopicCategories();
+                for(int i = 0; i<3; i++) {
+                    try {
+                        ps.setString(12+i, categories.get(i));
+                    }catch (IndexOutOfBoundsException e) {
+                    ps.setString(12+i, "");
+                    }
 
+                }
+                System.out.println(ps.toString());
+                boolean res = ps.execute();
+                System.out.println("inserted: " + res);
+                //inserttag
             }
-            ps.setString(12, channel.getBrandingSettings().getChannel().getKeywords());
-            System.out.println(ps.toString());
-            boolean res = ps.execute();
-            System.out.println("inserted: " + res);
         } catch (GoogleJsonResponseException e) {
             System.err.println("GoogleJsonResponseException code: " + e.getDetails().getCode()
                     + " : " + e.getDetails().getMessage());
