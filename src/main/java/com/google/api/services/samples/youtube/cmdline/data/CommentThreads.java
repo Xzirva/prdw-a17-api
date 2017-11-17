@@ -83,29 +83,18 @@ public class CommentThreads {
             System.out.println("You chose " + videoId + " to subscribe.");
 
             List<CommentThread> channelComments = getCommentThreads(channelId, "channel");
-            String prettyStringToSave = "";
+            //String prettyStringToSave = "";
             BufferedWriter out = new BufferedWriter(new FileWriter("fetched-data"+"CNN"+ System.nanoTime()+".json"));
-            for(CommentThread c : channelComments) {
-                prettyStringToSave += c.toPrettyString();
-            }
-            out.write(prettyStringToSave);
+//            for(CommentThread c : channelComments) {
+//                prettyStringToSave += c.toPrettyString();
+//            }
+//            out.write(prettyStringToSave);
             if (channelComments.isEmpty()) {
                 System.out.println("Can't get channel comments.");
             } else {
                 // Print information from the API response.
                 System.out
                         .println("\n================== Returned Channel Comments" + channelComments.size() + " ==================\n");
-
-//                for (CommentThread channelComment : channelComments) {
-//                    snippet = channelComment.getSnippet().getTopLevelComment()
-//                            .getSnippet();
-//                    System.out.println("  - Author: " + snippet.getAuthorDisplayName());
-//                    System.out.println("  - Comment: " + snippet.getTextDisplay());
-//                    System.out.println("  - Likes: " + snippet.getLikeCount());
-//                    System.out.println("  - Likes: " + snippet.getPublishedAt());
-//                    System.out
-//                            .println("\n-------------------------------------------------------------\n");
-//                }
             }
         } catch (GoogleJsonResponseException e) {
             System.err.println("GoogleJsonResponseException code: " + e.getDetails().getCode()
