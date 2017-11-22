@@ -159,7 +159,7 @@ public class Videos {
                 for (int i = 0; i < nbtags; i++){
                     try {
                             pstag.setString(1, UUID.randomUUID().toString());
-                            pstag.setString(2, video.getSnippet().getTitle());
+                            pstag.setString(2, tags.get(i));
                             pstag.setString(3, video.getId());
                         
                     }catch (IndexOutOfBoundsException e) {
