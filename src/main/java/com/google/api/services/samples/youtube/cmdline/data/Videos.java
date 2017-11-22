@@ -137,7 +137,7 @@ public class Videos {
                 ps.setLong (9, Long.parseLong(video.getStatistics().getDislikeCount().toString()));
                 ps.setLong (10, Long.parseLong(video.getStatistics().getFavoriteCount().toString()));
                 ps.setString(11, video.getSnippet().getCategoryId());
-                  
+               
                 List<String> categories = video.getTopicDetails().getTopicCategories();
                 for(int i = 0; i<3; i++) {
                     try {
@@ -145,12 +145,34 @@ public class Videos {
                     }catch (IndexOutOfBoundsException e) {
                     ps.setString(12+i, "");
                     }
-
+                
                 }
                 System.out.println(ps.toString());
                 boolean res = ps.execute();
-                System.out.println("inserted: " + res);
-                //inserttag
+                System.out.println("inserted video: " + res);
+                
+                System.out.println("Inserting tags of the video into the table");
+                String query1 = "INSERT INTO \"prdwa17_staging\".\"youtubetags\" (\"id\", \"title\", \"videoid\") VALUES (?,?,?)";
+                PreparedStatement pstag = conn.prepareStatement(query1);
+                List<String> tags = video.getSnippet().getTags();
+                int nbtags = tags.size();
+                for (int i = 0; i < nbtags; i++){
+                    try {
+                            pstag.setString(1, UUID.randomUUID().toString());
+                            pstag.setString(2, video.getSnippet().getTitle());
+                            pstag.setString(3, video.getId());
+                        
+                    }catch (IndexOutOfBoundsException e) {
+                        pstag.setString(1, "");
+                        pstag.setString(2, "");
+                        pstag.setString(3, "");
+                    }
+                }
+                
+                System.out.println(pstag.toString());
+                boolean res1 = pstag.execute();
+                System.out.println("inserted tag: " + res1);                                                          
+                
             }
         } catch (GoogleJsonResponseException e) {
             System.err.println("GoogleJsonResponseException code: " + e.getDetails().getCode()
