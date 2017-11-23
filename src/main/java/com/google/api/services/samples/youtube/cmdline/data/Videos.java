@@ -17,7 +17,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.*;
 
 public class Videos {
@@ -26,8 +25,16 @@ public class Videos {
      * Define a global instance of a YouTube object, which will be used to make
      * YouTube Data API requests.
      */
+    private static Connection conn;
     private static YouTube youtube;
     static {
+        try {
+            conn = AsterDatabaseInterface.connect();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         // This OAuth 2.0 access scope allows for full read/write access to the
         // authenticated user's account and requires requests to use an SSL connection.
         List<String> scopes = Lists.newArrayList("https://www.googleapis.com/auth/youtube.force-ssl");
@@ -120,8 +127,11 @@ public class Videos {
             cal.setTime(date);
             cal.add(Calendar.DAY_OF_MONTH, -1);
             List<Video> videos = getVideos(channelId, new DateTime(cal.getTime()));
-            Connection conn = AsterDatabaseInterface.connect();
-            String query = "INSERT INTO \"prdwa17_staging\".\"videos\" (\"id\", \"channelid\", \"title\", \"description\", \"publishedat\", \"viewcount\", \"commentcount\", \"likecount\", \"dislikecount\", \"favoritecount\", \"categoryid\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+            String query = "INSERT INTO \"prdwa17_staging\".\"videos\" " +
+                    "(\"id\", \"channelid\", \"title\", \"description\", \"publishedat\"," +
+                    " \"viewcount\", \"commentcount\", \"likecount\", \"dislikecount\", " +
+                    "\"favoritecount\", \"categoryid\", \"topiccategory_1\", \"topiccategory_2\", " +
+                    "\"topiccategory_3\", \"fetchedat\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
  	
  
             PreparedStatement ps = conn.prepareStatement(query);
@@ -139,7 +149,8 @@ public class Videos {
                 ps.setString(11, video.getSnippet().getCategoryId());
                
                 List<String> categories = video.getTopicDetails().getTopicCategories();
-                for(int i = 0; i<3; i++) {
+                int i;
+                for(i = 0;i<3; i++) {
                     try {
                         ps.setString(12+i, categories.get(i));
                     }catch (IndexOutOfBoundsException e) {
@@ -147,6 +158,8 @@ public class Videos {
                     }
                 
                 }
+                java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
+                ps.setTimestamp(12+i, currentTimestamp);
                 System.out.println(ps.toString());
                 boolean res = ps.execute();
                 System.out.println("inserted video: " + res);
@@ -156,7 +169,7 @@ public class Videos {
                 PreparedStatement pstag = conn.prepareStatement(query1);
                 List<String> tags = video.getSnippet().getTags();
                 int nbtags = tags.size();
-                for (int i = 0; i < nbtags; i++){
+                for (i = 0; i < nbtags; i++){
                     try {
                             pstag.setString(1, UUID.randomUUID().toString());
                             pstag.setString(2, tags.get(i));

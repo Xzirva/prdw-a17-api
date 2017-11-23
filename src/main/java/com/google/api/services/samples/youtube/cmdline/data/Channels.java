@@ -16,6 +16,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.Date;
 import java.util.List;
 
 public class Channels {
@@ -53,7 +54,7 @@ public class Channels {
             Channel channel = getChannel(channelName);
             Connection conn = AsterDatabaseInterface.connect();
             String query = " INSERT INTO \"prdwa17_staging\".\"channels\" (\"id\", \"title\", \"description\", \"publishedat\", \"viewcount\", \"commentcount\", \"subscribercount\", " +
-                    "\"videocount\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\", \"keywords\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?);";
+                    "\"videocount\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\", \"keywords\", \"fetchedat\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);";
             PreparedStatement ps = conn.prepareStatement(query);
             ps.setString(1, channel.getId());
             ps.setString(2, channel.getSnippet().getTitle() );
@@ -69,11 +70,13 @@ public class Channels {
                     ps.setString(9+i, categories.get(i));
                 } catch (IndexOutOfBoundsException e) {
                     ps.setString(9+i, "");
+                    ps.setString(9+i, "");
                 }
 
             }
             ps.setString(12, channel.getBrandingSettings().getChannel().getKeywords());
-            System.out.println(ps.toString());
+            java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
+            ps.setTimestamp(13, currentTimestamp);
             boolean res = ps.execute();
             System.out.println("inserted: " + res);
         } catch (GoogleJsonResponseException e) {
