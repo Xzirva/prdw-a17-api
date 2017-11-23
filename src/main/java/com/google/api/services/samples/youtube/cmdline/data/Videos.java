@@ -163,7 +163,7 @@ public class Videos {
                 System.out.println(ps.toString());
                 boolean res = ps.execute();
                 System.out.println("inserted video: " + res);
-                
+
                 System.out.println("Inserting tags of the video into the table");
                 String query1 = "INSERT INTO \"prdwa17_staging\".\"youtubetags\" (\"id\", \"title\", \"videoid\") VALUES (?,?,?)";
                 PreparedStatement pstag = conn.prepareStatement(query1);
