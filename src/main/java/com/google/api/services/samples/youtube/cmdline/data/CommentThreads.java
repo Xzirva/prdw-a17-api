@@ -17,17 +17,17 @@ package com.google.api.services.samples.youtube.cmdline.data;
 import java.io.*;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import com.google.api.client.util.DateTime;
+import com.google.api.services.samples.youtube.cmdline.AsterDatabaseInterface;
 import com.google.api.services.samples.youtube.cmdline.Auth;
 import com.google.api.services.youtube.YouTube;
-import com.google.api.services.youtube.model.Comment;
-import com.google.api.services.youtube.model.CommentSnippet;
-import com.google.api.services.youtube.model.CommentThread;
-import com.google.api.services.youtube.model.CommentThreadSnippet;
-import com.google.api.services.youtube.model.CommentThreadListResponse;
+import com.google.api.services.youtube.model.*;
 import com.google.common.collect.Lists;
 
 /**
@@ -110,7 +110,7 @@ public class CommentThreads {
         }
     }
 
-    private static List<CommentThread> getCommentThreads(String parentId, String type) throws IOException {
+    private static List<CommentThread> getCommentThreads(String parentId, String type, DateTime publishedDateTime) throws IOException {
         CommentThreadListResponse CommentsListResponse;
         String nextPageToken = "";
         List<CommentThread> comments = new ArrayList<CommentThread>();
@@ -132,5 +132,57 @@ public class CommentThreads {
             nextPageToken = CommentsListResponse.getNextPageToken();
         }
         return comments;
+    }
+
+    public static void insertComments(String videoId, DateTime publishedDateTime) {
+        try {
+
+            // Prompt the user for the ID of a channel to comment on.
+            // Retrieve the channel ID that the user is commenting to.
+            System.out.println("Inserting videos from channel: " + channelId);
+            java.util.Date date = new Date();
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(date);
+            cal.add(Calendar.DAY_OF_MONTH, -1);
+            List<Video> videos = getCommentThreads(videoId, ,new DateTime(cal.getTime()));
+            Connection conn = AsterDatabaseInterface.connect();
+            System.out.println("Inserting channel: " + channelName);
+            String query = " INSERT INTO \"prdwa17_staging\".\"channels\" (\"id\", \"title\", \"description\", \"publishedat\", \"viewcount\", \"commentcount\", \"subscribercount\", " +
+                    "\"videocount\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\", \"keywords\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?);";
+            PreparedStatement ps = conn.prepareStatement(query);
+            ps.setString(1, channel.getId());
+            ps.setString(2, channel.getSnippet().getTitle() );
+            ps.setString(3, channel.getSnippet().getDescription());
+            ps.setTimestamp(4, new Timestamp(channel.getSnippet().getPublishedAt().getValue()));
+            ps.setLong (5, Long.parseLong(channel.getStatistics().getViewCount().toString()));
+            ps.setLong(6, Long.parseLong(channel.getStatistics().getCommentCount().toString()));
+            ps.setLong(7, Long.parseLong(channel.getStatistics().getSubscriberCount().toString()));
+            ps.setLong (8, Long.parseLong(channel.getStatistics().getVideoCount().toString()));
+            List<String> categories = channel.getTopicDetails().getTopicCategories();
+            for(int i = 0; i<3; i++) {
+                try {
+                    ps.setString(9+i, categories.get(i));
+                } catch (IndexOutOfBoundsException e) {
+                    ps.setString(9+i, "");
+                }
+
+            }
+            ps.setString(12, channel.getBrandingSettings().getChannel().getKeywords());
+            System.out.println(ps.toString());
+            boolean res = ps.execute();
+            System.out.println("inserted: " + res);
+        } catch (GoogleJsonResponseException e) {
+            System.err.println("GoogleJsonResponseException code: " + e.getDetails().getCode()
+                    + " : " + e.getDetails().getMessage());
+            e.printStackTrace();
+
+        } catch (IOException e) {
+            System.err.println("IOException: " + e.getMessage());
+            e.printStackTrace();
+        } catch (Throwable t) {
+            System.err.println("Throwable: " + t.getMessage());
+            t.printStackTrace();
+        }
+
     }
 }
