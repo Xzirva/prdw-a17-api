@@ -7,10 +7,8 @@ import com.google.api.services.samples.youtube.cmdline.Auth;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.Channel;
 import com.google.api.services.youtube.model.ChannelListResponse;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
-
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -19,15 +17,24 @@ import java.sql.Timestamp;
 import java.util.Date;
 import java.util.List;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
 public class Channels {
     /**
      * Define a global instance of a YouTube object, which will be used to make
      * YouTube Data API requests.
      */
-    private static final String[] channelNames = {"bbcnews","CNN", "cbcnews", "ibnlive", "CNNMoney"};
     private static YouTube youtube;
     private static int count = 0;
+    private static Connection conn;
     static {
+        try {
+            conn = AsterDatabaseInterface.connect();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         // This OAuth 2.0 access scope allows for full read/write access to the
         // authenticated user's account and requires requests to use an SSL connection.
         List<String> scopes = Lists.newArrayList("https://www.googleapis.com/auth/youtube.force-ssl");
@@ -45,14 +52,13 @@ public class Channels {
 
     }
 
-    public static void insertChannel(String channelName) {
+    public static Channel insertChannel(String channelName) {
         try {
 
             // Prompt the user for the ID of a channel to comment on.
             // Retrieve the channel ID that the user is commenting to.
             System.out.println("Inserting channel: " + channelName);
             Channel channel = getChannel(channelName);
-            Connection conn = AsterDatabaseInterface.connect();
             String query = " INSERT INTO \"prdwa17_staging\".\"channels\" (\"id\", \"title\", \"description\", \"publishedat\", \"viewcount\", \"commentcount\", \"subscribercount\", " +
                     "\"videocount\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\", \"keywords\", \"fetchedat\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);";
             PreparedStatement ps = conn.prepareStatement(query);
@@ -78,7 +84,8 @@ public class Channels {
             java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
             ps.setTimestamp(13, currentTimestamp);
             boolean res = ps.execute();
-            System.out.println("inserted: " + res);
+//            System.out.println("inserted: " + res);
+            return channel;
         } catch (GoogleJsonResponseException e) {
             System.err.println("GoogleJsonResponseException code: " + e.getDetails().getCode()
                     + " : " + e.getDetails().getMessage());
@@ -91,12 +98,26 @@ public class Channels {
             System.err.println("Throwable: " + t.getMessage());
             t.printStackTrace();
         }
+        return null;
 
     }
     public static void main(String[] args) throws ClassNotFoundException, SQLException {
-        for(String ch : channelNames){
-            insertChannel(ch);
+        Stopwatch stopwatch = Stopwatch.createStarted();
+        for(String ch : args){
+            try {
+                Channel channel = insertChannel(ch);
+                System.out.println("New Thread to load videos of channel " + ch + " -- " +  channel.getId());
+                Videos videoThread = new Videos(channel.getId(), ch);
+                videoThread.start();
+            } catch (NullPointerException e) {
+                System.out.println(new Date() + " - NullPointerException with channel" + ch);
+            }
         }
+        stopwatch.stop(); // optional
+
+        long millis = stopwatch.elapsed(MILLISECONDS);
+        System.out.println("------------------Fetched Channels within: " + stopwatch + "-------------------");
+
     }
 
     private static Channel getChannel(String username) throws Exception {

@@ -28,7 +28,10 @@ import com.google.api.services.samples.youtube.cmdline.AsterDatabaseInterface;
 import com.google.api.services.samples.youtube.cmdline.Auth;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.*;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
+
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * This sample creates and manages top-level comments by:
@@ -39,7 +42,7 @@ import com.google.common.collect.Lists;
  *
  * @author Ibrahim Ulukaya
  */
-public class CommentThreads {
+public class CommentThreads extends Thread {
 
     /**
      * Define a global instance of a YouTube object, which will be used to make
@@ -47,7 +50,12 @@ public class CommentThreads {
      */
     private static Connection conn;
     private static YouTube youtube;
-
+    private String videoId;
+    private String videoTitle;
+    public CommentThreads(String videoId, String videoTitle) {
+        this.videoId = videoId;
+        this.videoTitle = videoTitle;
+    }
     static {
         try {
             conn = AsterDatabaseInterface.connect();
@@ -74,57 +82,25 @@ public class CommentThreads {
     }
 
     /**
-     * Create, list and update top-level channel and video comments.
-     *
-     * @param args command line args (not used).
      */
-    public static void main(String[] args) throws ClassNotFoundException, SQLException {
-        /*try {
+    public void run() {
+        Stopwatch stopwatch = Stopwatch.createStarted();
 
-            // Prompt the user for the ID of a channel to comment on.
-            // Retrieve the channel ID that the user is commenting to.
+        //String videoId = "AZ8mB-eudv0";
+        int count = insertComments(videoId);
+        stopwatch.stop(); // optional
 
-            // Prompt the user for the ID of a video to comment on.
-            // Retrieve the video ID that the user is commenting to.
-            String videoId = "AZ8mB-eudv0";
-            System.out.println("You chose " + videoId + " to subscribe.");
-
-            List<CommentThread> channelComments = getCommentThreads(videoId, "video");
-            //String prettyStringToSave = "";
-            BufferedWriter out = new BufferedWriter(new FileWriter("fetched-data"+"CNN"+ System.nanoTime()+".json"));
-//            for(CommentThread c : channelComments) {
-//                prettyStringToSave += c.toPrettyString();
-//            }
-//            out.write(prettyStringToSave);
-            if (channelComments.isEmpty()) {
-                System.out.println("Can't get channel comments.");
-            } else {
-                // Print information from the API response.
-                System.out
-                        .println("\n================== Returned Channel Comments" + channelComments.size() + " ==================\n");
-            }
-        } catch (GoogleJsonResponseException e) {
-            System.err.println("GoogleJsonResponseException code: " + e.getDetails().getCode()
-                    + " : " + e.getDetails().getMessage());
-            e.printStackTrace();
-
-        } catch (IOException e) {
-            System.err.println("IOException: " + e.getMessage());
-            e.printStackTrace();
-        } catch (Throwable t) {
-            System.err.println("Throwable: " + t.getMessage());
-            t.printStackTrace();
-        }*/
-        String videoId = "AZ8mB-eudv0";
-        insertComments(videoId);
+        long millis = stopwatch.elapsed(MILLISECONDS);
+        System.out.println("------------------Fetched " + count + " Comments of video " + videoTitle + " -- " + videoId + stopwatch + "-------------------");
+        System.out.println( "--------------------------------- END AT: "  + new Date() + "----------------------------");
     }
 
-    private static List<CommentThread> getCommentThreads(String parentId, String type, DateTime publishedDateTime) throws IOException {
+    private List<CommentThread> getCommentThreads(String parentId, String type, DateTime publishedDateTime) throws IOException {
         CommentThreadListResponse CommentsListResponse;
         String nextPageToken = "";
         List<CommentThread> comments = new ArrayList<CommentThread>();
         while (nextPageToken != null) {
-            System.out.println("Fetching CommentsThreads");
+            System.out.println("Fetching CommentsThreads of video " + videoTitle + " -- " + videoId);
             if (type.equals("video"))
                 CommentsListResponse = (nextPageToken.equals("") ? youtube.commentThreads().list("id,snippet,replies")
                         .setVideoId(parentId).setTextFormat("plaintext").setOrder("time").execute() :
@@ -143,7 +119,8 @@ public class CommentThreads {
         return comments;
     }
 
-    public static void insertComments(String videoId) {
+    public int insertComments(String videoId) {
+        int count = 0;
         try {
 
             // Prompt the user for the ID of a channel to comment on.
@@ -159,6 +136,7 @@ public class CommentThreads {
                     "\"authordisplayedname\", \"authorchannelid\", \"videoid\", " +
                     "\"parentid\", \"textdisplay\", \"likecount\", \"publishedat\", " +
                     "\"fetchedat\") VALUES (?,?,?,?,?,?,?,?,?,?);";
+
             for (CommentThread c : comments) {
                 PreparedStatement ps = conn.prepareStatement(query);
                 Comment topC = c.getSnippet().getTopLevelComment();
@@ -174,15 +152,18 @@ public class CommentThreads {
 
                 java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
                 ps.setTimestamp(10, currentTimestamp);
-                System.out.println(ps.toString());
+                count++;
+                //System.out.println(ps.toString());
+                if(count % 30 == 0)
+                    System.out.println("Have inserted" + count + " comments for video: " + videoId);
                 boolean res = ps.execute();
-                System.out.println("inserted: " + res);
+//                System.out.println("inserted: " + res);
             }
-
         } catch (SQLException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return count;
     }
 }

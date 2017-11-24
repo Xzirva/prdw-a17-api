@@ -8,6 +8,7 @@ import com.google.api.services.samples.youtube.cmdline.AsterDatabaseInterface;
 import com.google.api.services.samples.youtube.cmdline.Auth;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.*;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 
 import java.io.BufferedWriter;
@@ -20,14 +21,23 @@ import java.sql.Timestamp;
 import java.util.*;
 import java.text.SimpleDateFormat;
 
-public class Videos {
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
+public class Videos extends Thread {
 
     /**
      * Define a global instance of a YouTube object, which will be used to make
      * YouTube Data API requests.
      */
     private static Connection conn;
+    private String channelId;
     private static YouTube youtube;
+    private String channelName;
+
+    public Videos (String channelId, String channelName) {
+        this.channelId = channelId;
+        this.channelName = channelName;
+    }
     static {
         try {
             conn = AsterDatabaseInterface.connect();
@@ -54,26 +64,28 @@ public class Videos {
     }
 
     /**
-     * Create, list and update top-level channel and video comments.
-     *
-     * @param args command line args (not used).
      */
-    public static void main(String[] args) throws ClassNotFoundException, SQLException {
+    // String channelId = "UCupvZG-5ko_eiXAupbDfxWw";
+    public void run () {
         try {
+            Stopwatch stopwatch = Stopwatch.createStarted();
 
             // Prompt the user for the ID of a channel to comment on.
             // Retrieve the channel ID that the user is commenting to.
-            String channelId = "UCupvZG-5ko_eiXAupbDfxWw";
             System.out.println("You chose " + channelId + " to subscribe.");
+            insertVideos();
+            stopwatch.stop(); // optional
 
-            insertVideos(channelId);
+            long millis = stopwatch.elapsed(MILLISECONDS);
+            System.out.println("------------------Fetched Channels within: " + stopwatch + "-------------------");
+
         } catch (Throwable t) {
             System.err.println("Throwable: " + t.getMessage());
             t.printStackTrace();
         }
     }
 
-    private static List<Video> getVideos(String channelId, DateTime publishedDateTime) throws Exception {
+    private List<Video> getVideos(String channelId, DateTime publishedDateTime) throws Exception {
         YouTube.Search.List playlistItemRequest = youtube.search ().list("id").setChannelId(channelId).setType("video").setPublishedAfter(publishedDateTime);
         String parts = "snippet,statistics,contentDetails,topicDetails";
         String nextToken = "";
@@ -117,12 +129,12 @@ public class Videos {
         return videos;
     }
 
-    public static void insertVideos(String channelId) {
+    public void insertVideos() {
         try {
 
             // Prompt the user for the ID of a channel to comment on.
             // Retrieve the channel ID that the user is commenting to.
-            System.out.println("Inserting videos from channel: " + channelId);
+            System.out.println("Inserting videos from channel: " + channelName + " -- id: " + channelId);
             Date date = new Date();
             Calendar cal = Calendar.getInstance();
             cal.setTime(date);
@@ -148,24 +160,31 @@ public class Videos {
                 ps.setLong (9, Long.parseLong(video.getStatistics().getDislikeCount().toString()));
                 ps.setLong (10, Long.parseLong(video.getStatistics().getFavoriteCount().toString()));
                 ps.setString(11, video.getSnippet().getCategoryId());
-               
-                List<String> categories = video.getTopicDetails().getTopicCategories();
+
                 int i;
-                for(i = 0;i<3; i++) {
-                    try {
-                        ps.setString(12+i, categories.get(i));
-                    }catch (IndexOutOfBoundsException e) {
-                    ps.setString(12+i, "");
+                List<String> categories;
+                try {
+                    categories = video.getTopicDetails().getTopicCategories();
+                    for(i = 0;i<3; i++) {
+                        try {
+                            ps.setString(12+i, categories.get(i));
+                        }catch (IndexOutOfBoundsException e) {
+                            ps.setString(12+i, "");
+                        }
                     }
-                
+                } catch (NullPointerException e) {
+                    for(i = 0;i<3; i++) {
+                        ps.setString(12+i, "");
+                    }
                 }
+
                 java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
                 ps.setTimestamp(12+i, currentTimestamp);
-                System.out.println(ps.toString());
+                //System.out.println(ps.toString());
                 boolean res = ps.execute();
-                System.out.println("inserted video: " + res);
+                //System.out.println("inserted video: " + res);
 
-                System.out.println("Inserting tags of the video into the table");
+                System.out.println("Inserting tags of the video" + video.getId() + " and channel " + channelName + " into the table");
                 String query1 = "INSERT INTO \"prdwa17_staging\".\"youtubetags\" (\"id\", \"title\", \"videoid\") VALUES (?,?,?)";
                 PreparedStatement pstag = conn.prepareStatement(query1);
                 List<String> tags = video.getSnippet().getTags();
@@ -183,10 +202,14 @@ public class Videos {
                     }
                 }
                 
-                System.out.println(pstag.toString());
+                //System.out.println(pstag.toString());
                 boolean res1 = pstag.execute();
-                System.out.println("inserted tag: " + res1);                                                          
-                
+                //System.out.println("inserted tag: " + res1);
+                System.out.println("New Thread to load comments of video " + video.getId());
+                CommentThreads commentThreadsThread = new CommentThreads(video.getId(), video.getSnippet().getTitle());
+                commentThreadsThread.start();
+                System.out.println("--------------------------------- END AT : "  + new Date() + "----------------------------");
+
             }
         } catch (GoogleJsonResponseException e) {
             System.err.println("GoogleJsonResponseException code: " + e.getDetails().getCode()
