@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Implementation-Title: Java 6 (and higher) extensions to the Google OAu
+ th Client Library for Java.
+Implementation-Version: 1.20.0
+Archiver-Version: Plexus Archiver
+Built-By: wonderfly
+Implementation-Vendor-Id: com.google.oauth-client
+Created-By: Apache Maven
+Build-Jdk: 1.7.0-google-v6
+Implementation-Vendor: Google
+Main-Class: com.google.api.services.samples.youtube.cmdline.Main
+
