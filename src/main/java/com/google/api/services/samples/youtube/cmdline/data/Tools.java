@@ -37,7 +37,7 @@ public class Tools {
         year = cal.get(Calendar.YEAR);
         month = cal.get(Calendar.MONTH);
         day = cal.get(Calendar.DAY_OF_MONTH);
-        //faut enregistrer les variables locales year, month and day
+        //faut enregistrer les variables locales year, month and day 
     }
     
     
