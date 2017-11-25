@@ -2,6 +2,7 @@ package com.google.api.services.samples.youtube.cmdline.data;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import com.google.api.client.util.DateTime;
 import com.google.api.services.samples.youtube.cmdline.AsterDatabaseInterface;
 import com.google.api.services.samples.youtube.cmdline.Auth;
 import com.google.api.services.youtube.YouTube;
@@ -27,6 +28,7 @@ public class Channels {
     private static YouTube youtube;
     private static int count = 0;
     private static Connection conn;
+    public static DateTime datePublishedAfter = Tools.getDateTime();
     static {
         try {
             conn = AsterDatabaseInterface.connect();
@@ -51,7 +53,7 @@ public class Channels {
                 .setApplicationName("youtube-cmdline-channels-sample").build();
 
     }
-
+    // z225wn4wcryfyzxro04t1aokgkd4frmqh0y0xuwpyqaxbk0h00410
     public static Channel insertChannel(String channelName) {
         try {
 
@@ -59,8 +61,10 @@ public class Channels {
             // Retrieve the channel ID that the user is commenting to.
             System.out.println("Inserting channel: " + channelName);
             Channel channel = getChannel(channelName);
-            String query = " INSERT INTO \"prdwa17_staging\".\"channels\" (\"id\", \"title\", \"description\", \"publishedat\", \"viewcount\", \"commentcount\", \"subscribercount\", " +
-                    "\"videocount\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\", \"keywords\", \"fetchedat\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);";
+            String query = " INSERT INTO \"prdwa17_staging\".\"channels\" (\"id\", \"title\", \"description\", \"publishedat\", " +
+                    "\"viewcount\", \"commentcount\", \"subscribercount\", " +
+                    "\"videocount\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\", " +
+                    "\"keywords\", \"fetchedat\", \"screenshot\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
             PreparedStatement ps = conn.prepareStatement(query);
             ps.setString(1, channel.getId());
             ps.setString(2, channel.getSnippet().getTitle() );
@@ -83,6 +87,8 @@ public class Channels {
             ps.setString(12, channel.getBrandingSettings().getChannel().getKeywords());
             java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
             ps.setTimestamp(13, currentTimestamp);
+            ps.setString(14, channel.getId()+currentTimestamp.toString());
+
             boolean res = ps.execute();
 //            System.out.println("inserted: " + res);
             return channel;
@@ -107,7 +113,7 @@ public class Channels {
             try {
                 Channel channel = insertChannel(ch);
                 System.out.println("New Thread to load videos of channel " + ch + " -- " +  channel.getId());
-                Videos videoThread = new Videos(channel.getId(), ch);
+                Videos videoThread = new Videos(channel.getId(), ch, datePublishedAfter);
                 videoThread.start();
             } catch (NullPointerException e) {
                 System.out.println(new Date() + " - NullPointerException with channel" + ch);

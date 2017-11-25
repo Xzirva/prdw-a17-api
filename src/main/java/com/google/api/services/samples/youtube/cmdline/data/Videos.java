@@ -33,10 +33,11 @@ public class Videos extends Thread {
     private String channelId;
     private static YouTube youtube;
     private String channelName;
-
-    public Videos (String channelId, String channelName) {
+    private DateTime datePublishedAfter;
+    public Videos (String channelId, String channelName, DateTime datePublishedAfter) {
         this.channelId = channelId;
         this.channelName = channelName;
+        this.datePublishedAfter = datePublishedAfter;
     }
     static {
         try {
@@ -77,7 +78,7 @@ public class Videos extends Thread {
             stopwatch.stop(); // optional
 
             long millis = stopwatch.elapsed(MILLISECONDS);
-            System.out.println("------------------Fetched Channels within: " + stopwatch + "-------------------");
+            System.out.println("------------------Fetched videos within: " + stopwatch + "-------------------");
 
         } catch (Throwable t) {
             System.err.println("Throwable: " + t.getMessage());
@@ -86,7 +87,8 @@ public class Videos extends Thread {
     }
 
     private List<Video> getVideos(String channelId, DateTime publishedDateTime) throws Exception {
-        YouTube.Search.List playlistItemRequest = youtube.search ().list("id").setChannelId(channelId).setType("video").setPublishedAfter(publishedDateTime);
+        YouTube.Search.List playlistItemRequest = youtube.search ().list("id").setChannelId(channelId)
+                .setType("video").setPublishedAfter(publishedDateTime);
         String parts = "snippet,statistics,contentDetails,topicDetails";
         String nextToken = "";
         System.out.println("Fetching Videos. Channel: " + channelId);
@@ -135,16 +137,12 @@ public class Videos extends Thread {
             // Prompt the user for the ID of a channel to comment on.
             // Retrieve the channel ID that the user is commenting to.
             System.out.println("Inserting videos from channel: " + channelName + " -- id: " + channelId);
-            Date date = new Date();
-            Calendar cal = Calendar.getInstance();
-            cal.setTime(date);
-            cal.add(Calendar.DAY_OF_MONTH, -1);
-            List<Video> videos = getVideos(channelId, new DateTime(cal.getTime()));
+            List<Video> videos = getVideos(channelId, datePublishedAfter);
             String query = "INSERT INTO \"prdwa17_staging\".\"videos\" " +
                     "(\"id\", \"channelid\", \"title\", \"description\", \"publishedat\"," +
                     " \"viewcount\", \"commentcount\", \"likecount\", \"dislikecount\", " +
                     "\"favoritecount\", \"categoryid\", \"topiccategory_1\", \"topiccategory_2\", " +
-                    "\"topiccategory_3\", \"fetchedat\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                    "\"topiccategory_3\", \"fetchedat\", \"screenshot\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
  	
  
             PreparedStatement ps = conn.prepareStatement(query);
@@ -180,6 +178,7 @@ public class Videos extends Thread {
 
                 java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
                 ps.setTimestamp(12+i, currentTimestamp);
+                ps.setString(12+i+1, video.getId()+currentTimestamp.toString());
                 //System.out.println(ps.toString());
                 boolean res = ps.execute();
                 //System.out.println("inserted video: " + res);
@@ -208,7 +207,7 @@ public class Videos extends Thread {
                 System.out.println("New Thread to load comments of video " + video.getId());
                 CommentThreads commentThreadsThread = new CommentThreads(video.getId(), video.getSnippet().getTitle());
                 commentThreadsThread.start();
-                System.out.println("--------------------------------- END AT : "  + new Date() + "----------------------------");
+                System.out.println("--------------------------------- END AT : "  + new Date() + " ----------------------------");
 
             }
         } catch (GoogleJsonResponseException e) {

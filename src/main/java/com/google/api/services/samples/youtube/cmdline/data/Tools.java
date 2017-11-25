@@ -44,7 +44,7 @@ public class Tools {
     public static void main(String[] args){
         System.out.println(parseTopicCategory("https://en.wikipedia.org/wiki/Society"));
         writeLog();
-        System.out.println(getDateTime().toString());
+        System.out.println(getDateTime());
     }
     public static void writeLog(){
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yy HH:mm:ss");

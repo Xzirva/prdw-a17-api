@@ -93,9 +93,10 @@ public class CommentThreads extends Thread {
         long millis = stopwatch.elapsed(MILLISECONDS);
         System.out.println("------------------Fetched " + count + " Comments of video " + videoTitle + " -- " + videoId + stopwatch + "-------------------");
         System.out.println( "--------------------------------- END AT: "  + new Date() + "----------------------------");
+
     }
 
-    private List<CommentThread> getCommentThreads(String parentId, String type, DateTime publishedDateTime) throws IOException {
+    private List<CommentThread> getCommentThreads(String parentId, String type) throws IOException {
         CommentThreadListResponse CommentsListResponse;
         String nextPageToken = "";
         List<CommentThread> comments = new ArrayList<CommentThread>();
@@ -126,16 +127,12 @@ public class CommentThreads extends Thread {
             // Prompt the user for the ID of a channel to comment on.
             // Retrieve the channel ID that the user is commenting to.
             System.out.println("Inserting videos from channel: " + videoId);
-            java.util.Date date = new Date();
-            Calendar cal = Calendar.getInstance();
-            cal.setTime(date);
-            cal.add(Calendar.DAY_OF_MONTH, -1);
-            List<CommentThread> comments = getCommentThreads(videoId, "video", new DateTime(cal.getTime()));
+            List<CommentThread> comments = getCommentThreads(videoId, "video");
             System.out.println("Inserting Comments for videos: " + videoId);
             String query = " INSERT INTO \"prdwa17_staging\".\"videoscomments\" (\"id\", \"authorchannelurl\", " +
                     "\"authordisplayedname\", \"authorchannelid\", \"videoid\", " +
-                    "\"parentid\", \"textdisplay\", \"likecount\", \"publishedat\", " +
-                    "\"fetchedat\") VALUES (?,?,?,?,?,?,?,?,?,?);";
+                    "\"parentid\", \"textoriginal\", \"likecount\", \"publishedat\", " +
+                    "\"fetchedat\", \"screenshot\") VALUES (?,?,?,?,?,?,?,?,?,?,?);";
 
             for (CommentThread c : comments) {
                 PreparedStatement ps = conn.prepareStatement(query);
@@ -146,12 +143,14 @@ public class CommentThreads extends Thread {
                 ps.setString(4, topC.getSnippet().getAuthorChannelId().toString());
                 ps.setString(5, topC.getSnippet().getVideoId());
                 ps.setString(6, "");
-                ps.setString(7, topC.getSnippet().getTextDisplay());
+                ps.setString(7, topC.getSnippet().getTextOriginal());
                 ps.setLong(8, topC.getSnippet().getLikeCount());
                 ps.setTimestamp(9, new Timestamp(topC.getSnippet().getPublishedAt().getValue()));
 
                 java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
                 ps.setTimestamp(10, currentTimestamp);
+                ps.setString(11, topC.getId()+currentTimestamp.toString());
+
                 count++;
                 //System.out.println(ps.toString());
                 if(count % 30 == 0)
