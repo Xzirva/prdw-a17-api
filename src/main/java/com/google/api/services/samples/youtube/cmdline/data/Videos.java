@@ -103,8 +103,8 @@ public class Videos extends Thread {
             playlistItemRequest.setPageToken(nextToken);
             playlistItemRequest.setFields("items(id),nextPageToken,pageInfo");
             SearchListResponse playlistItemResult = playlistItemRequest.execute();
-            System.out.println("Total Results: " + playlistItemResult.getPageInfo().getTotalResults() + "/" +
-                    "\nCurrentPageResult: " + playlistItemResult.getPageInfo().getResultsPerPage());
+//            System.out.println("Total Results: " + playlistItemResult.getPageInfo().getTotalResults() + "/" +
+//                    "\nCurrentPageResult: " + playlistItemResult.getPageInfo().getResultsPerPage());
             List<SearchResult> items = playlistItemResult.getItems();
             for(SearchResult item : items) {
 //                if(video_ids.size() < 50)
@@ -125,6 +125,9 @@ public class Videos extends Thread {
 //                }
             }while(videoNextToken != null);
 //            }
+            int count = videos.size();
+            if(count % 50 == 0)
+                System.out.println("Have Fetched" + count + " videos for channel: " + channelId);
 
             nextToken = playlistItemResult.getNextPageToken();
         } while (nextToken != null);
@@ -146,19 +149,43 @@ public class Videos extends Thread {
  	
  
             PreparedStatement ps = conn.prepareStatement(query);
+            int count = 0;
             for(Video video : videos){
                 ps.setString(1, video.getId());
                 ps.setString(2, video.getSnippet().getChannelId());
                 ps.setString(3, video.getSnippet().getTitle());
                 ps.setString(4, video.getSnippet().getDescription());
                 ps.setTimestamp(5, new Timestamp(video.getSnippet().getPublishedAt().getValue()));
-                ps.setLong (6, Long.parseLong(video.getStatistics().getViewCount().toString()));
-                ps.setLong(7, Long.parseLong(video.getStatistics().getCommentCount().toString()));
-                ps.setLong(8, Long.parseLong(video.getStatistics().getLikeCount().toString()));
-                ps.setLong (9, Long.parseLong(video.getStatistics().getDislikeCount().toString()));
-                ps.setLong (10, Long.parseLong(video.getStatistics().getFavoriteCount().toString()));
-                ps.setString(11, video.getSnippet().getCategoryId());
-
+                try {
+                    ps.setLong(6, Long.parseLong(video.getStatistics().getViewCount().toString()));
+                } catch(NullPointerException e) {
+                    ps.setLong(6,0);
+                }
+                try {
+                    ps.setLong(7, Long.parseLong(video.getStatistics().getCommentCount().toString()));
+                } catch(NullPointerException e) {
+                    ps.setLong(7,0);
+                }
+                try {
+                    ps.setLong(8, Long.parseLong(video.getStatistics().getLikeCount().toString()));
+                } catch(NullPointerException e) {
+                    ps.setLong(8,0);
+                }
+                try {
+                    ps.setLong (9, Long.parseLong(video.getStatistics().getDislikeCount().toString()));
+                } catch(NullPointerException e) {
+                    ps.setLong(9,0);
+                }
+                try {
+                    ps.setLong (10, Long.parseLong(video.getStatistics().getFavoriteCount().toString()));
+                } catch(NullPointerException e) {
+                    ps.setLong(10,0);
+                }
+                try {
+                    ps.setString(11, video.getSnippet().getCategoryId());
+                } catch(NullPointerException e) {
+                    ps.setString(11,"");
+                }
                 int i;
                 List<String> categories;
                 try {
@@ -181,34 +208,54 @@ public class Videos extends Thread {
                 ps.setString(12+i+1, video.getId()+currentTimestamp.toString());
                 //System.out.println(ps.toString());
                 boolean res = ps.execute();
-                //System.out.println("inserted video: " + res);
+                count++;
+                if(count % 50 == 0)
+                    System.out.println("Have Fetched" + count + " videos for channel: " + channelId);
 
-                System.out.println("Inserting tags of the video" + video.getId() + " and channel " + channelName + " into the table");
-                String query1 = "INSERT INTO \"prdwa17_staging\".\"youtubetags\" (\"id\", \"title\", \"videoid\") VALUES (?,?,?)";
-                PreparedStatement pstag = conn.prepareStatement(query1);
-                List<String> tags = video.getSnippet().getTags();
-                int nbtags = tags.size();
-                for (i = 0; i < nbtags; i++){
-                    try {
-                            pstag.setString(1, UUID.randomUUID().toString());
-                            pstag.setString(2, tags.get(i));
-                            pstag.setString(3, video.getId());
-                        
-                    }catch (IndexOutOfBoundsException e) {
-                        pstag.setString(1, "");
-                        pstag.setString(2, "");
-                        pstag.setString(3, "");
+                //System.out.println("inserted video: " + res);
+                /*try {
+                    List<String> tags = video.getSnippet().getTags();
+                    int nbtags = tags.size();
+                    System.out.println("Inserting tags of the video" + video.getId() + " and channel " + channelName + " into the table");
+                    String query1 = "INSERT INTO \"prdwa17_staging\".\"youtubetags\" (\"id\", \"title\", \"videoid\") VALUES (?,?,?)";
+                    PreparedStatement pstag = conn.prepareStatement(query1);
+
+                    for (i = 0; i < nbtags; i++) {
+                        try {
+                            try {
+                                pstag.setString(1, UUID.randomUUID().toString());
+                            } catch(NullPointerException e) {
+                                ps.setString(1,"");
+                            }
+                            try {
+                                pstag.setString(2, tags.get(i));
+                            } catch(NullPointerException e) {
+                                ps.setString(2,"");
+                            }
+                            try {
+                                pstag.setString(3, video.getId());
+                            } catch(NullPointerException e) {
+                                ps.setString(3,"");
+                            }
+                            boolean res1 = pstag.execute();
+
+                        } catch (IndexOutOfBoundsException e) {
+                            System.out.println("Error: Invalid tag for video " + video.getId() +
+                                    "(" + video.getSnippet().getTitle() + ")");
+                        }
                     }
-                }
-                
-                //System.out.println(pstag.toString());
-                boolean res1 = pstag.execute();
+                } catch(NullPointerException e) {
+                    System.out.println("Error inserting Tags : Probably no tags for video " +
+                            video.getId() + " (" + video.getSnippet().getTitle()+ ")");
+                }*/
+                    //System.out.println(pstag.toString());
                 //System.out.println("inserted tag: " + res1);
+                /*
                 System.out.println("New Thread to load comments of video " + video.getId());
                 CommentThreads commentThreadsThread = new CommentThreads(video.getId(), video.getSnippet().getTitle());
                 commentThreadsThread.start();
                 System.out.println("--------------------------------- END AT : "  + new Date() + " ----------------------------");
-
+                */
             }
         } catch (GoogleJsonResponseException e) {
             System.err.println("GoogleJsonResponseException code: " + e.getDetails().getCode()

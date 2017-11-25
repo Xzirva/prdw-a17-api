@@ -24,8 +24,7 @@ public class Main {
         System.out.println("--------------------------------- START AT : "  + new Date() + "----------------------------");
         System.out.println("--------------------------------- Fetching data published after: " + Tools.getDateTime() + "----------------------------");
         //String[] ch = {"CNN"};
-        Channels.main(args);
-        DateTime latestUpdate = Tools.getDateTime();
+        /*DateTime latestUpdate = Tools.getDateTime();
         int noOfDays = 7; //i.e two weeks
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(new Date());
@@ -34,7 +33,9 @@ public class Main {
             System.out.println("...........Setting threshold date for next download..........");
             Tools.writeLog();
         }
-        System.out.println(Tools.getDateTime());
+        System.out.println(Tools.getDateTime());*/
+        Channels.main(args);
+
     }
 
 }
