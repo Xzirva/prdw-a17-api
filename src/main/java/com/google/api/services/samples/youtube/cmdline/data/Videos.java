@@ -210,7 +210,7 @@ public class Videos extends Thread {
                 boolean res = ps.execute();
                 count++;
                 if(count % 50 == 0)
-                    System.out.println("Have Fetched" + count + " videos for channel: " + channelId);
+                    System.out.println("Have inserted" + count + " videos for channel: " + channelId);
 
                 //System.out.println("inserted video: " + res);
                 /*try {
