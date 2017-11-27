@@ -7,6 +7,7 @@ client ID and client secret. You can create an ID/secret pair at:
 
   https://code.google.com/apis/console
 
+How to fetch data for tagging process
 ------------------------------------------------------------------------------
 To team members (`huilingSHAOCH` and `louisste`):
 To collect data for the text mining and tagging process of the videos:
@@ -18,8 +19,9 @@ To collect data for the text mining and tagging process of the videos:
     -- `./prdw-a17-api-second.sh` on the other one
     
 The process should take about an hour, resulting in about 5000 videos fetched and inserted into the database.
-------------------------------------------------------------------------------
 
+General purpose instructions to run project
+------------------------------------------------------------------------------
 To build this code sample from the command line, type:
 
   <code>mvn compile</code>
