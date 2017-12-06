@@ -58,8 +58,16 @@ public class Tools {
         }
     }
     public static DateTime getDateTime(){
+        return getDateTime("api.log");
+    }
+
+    public static DateTime getDateTimeComments(){
+        return getDateTime("api_comments.log");
+    }
+
+    private static DateTime getDateTime(String filename){
         try {
-            BufferedReader logReader = new BufferedReader(new FileReader(" api.log"));
+            BufferedReader logReader = new BufferedReader(new FileReader(filename));
             String readDate = logReader.readLine();
             SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yy HH:mm:ss");
             Date tmpDate= sdf.parse(readDate);

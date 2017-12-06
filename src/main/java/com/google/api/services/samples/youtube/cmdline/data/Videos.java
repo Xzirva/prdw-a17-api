@@ -22,6 +22,7 @@ import java.util.*;
 import java.text.SimpleDateFormat;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class Videos extends Thread {
 
@@ -34,6 +35,14 @@ public class Videos extends Thread {
     private static YouTube youtube;
     private String channelName;
     private DateTime datePublishedAfter;
+    private static final String query = "INSERT INTO \"prdwa17_staging\".\"videos\" " +
+            "(\"id\", \"channelid\", \"title\", \"description\", \"publishedat\"," +
+            " \"viewcount\", \"commentcount\", \"likecount\", \"dislikecount\", " +
+            "\"favoritecount\", \"categoryid\", \"topiccategory_1\", \"topiccategory_2\", " +
+            "\"topiccategory_3\", \"fetchedat\", \"duration\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+
+
+    private static PreparedStatement ps;
     public Videos (String channelId, String channelName, DateTime datePublishedAfter) {
         this.channelId = channelId;
         this.channelName = channelName;
@@ -42,6 +51,7 @@ public class Videos extends Thread {
     static {
         try {
             conn = AsterDatabaseInterface.connect();
+            ps = conn.prepareStatement(query);
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         } catch (SQLException e) {
@@ -77,8 +87,11 @@ public class Videos extends Thread {
             insertVideos();
             stopwatch.stop(); // optional
 
-            long millis = stopwatch.elapsed(MILLISECONDS);
-            System.out.println("------------------Fetched videos within: " + stopwatch + "-------------------");
+            long millis = stopwatch.elapsed(SECONDS);
+            System.out.println("------------------inserted videos for channel " + channelName +"(" + channelId+ ")" +
+                    " within: " + millis + " s -------------------");
+            System.out.println("--------------------------------- END AT : "  + new Date() + " ----------------------------");
+
 
         } catch (Throwable t) {
             System.err.println("Throwable: " + t.getMessage());
@@ -95,25 +108,16 @@ public class Videos extends Thread {
         Stack<String> video_ids = new Stack<String>();
         Joiner stringJoiner = Joiner.on(',');
         List<Video> videos = new ArrayList<Video>();
-//        new Video().getSnippet().getP
-        // Call the API one or more times to retrieve all items in the
-        // list. As long as the API response returns a nextPageToken,
-        // there are still more items to retrieve.
+
         do {
             playlistItemRequest.setPageToken(nextToken);
             playlistItemRequest.setFields("items(id),nextPageToken,pageInfo");
             SearchListResponse playlistItemResult = playlistItemRequest.execute();
-//            System.out.println("Total Results: " + playlistItemResult.getPageInfo().getTotalResults() + "/" +
-//                    "\nCurrentPageResult: " + playlistItemResult.getPageInfo().getResultsPerPage());
             List<SearchResult> items = playlistItemResult.getItems();
             for(SearchResult item : items) {
-//                if(video_ids.size() < 50)
                 video_ids.add(item.getId().getVideoId());
-//                else {
             }
             String videoId = stringJoiner.join(video_ids);
-            // Call the YouTube Data API's youtube.videos.list method to
-            // retrieve the resources that represent the specified videos.
             String videoNextToken = "";
             do {
                 YouTube.Videos.List listVideosRequest = youtube.videos().list(parts).setId(videoId);
@@ -122,12 +126,11 @@ public class Videos extends Thread {
                 videos.addAll(listResponse.getItems());
                 videoNextToken = listResponse.getNextPageToken();
                 video_ids.clear();
-//                }
             }while(videoNextToken != null);
-//            }
+
             int count = videos.size();
             if(count % 50 == 0)
-                System.out.println("Have Fetched" + count + " videos for channel: " + channelId);
+                System.out.println("Have Fetched " + count + " videos for channel: " + channelId);
 
             nextToken = playlistItemResult.getNextPageToken();
         } while (nextToken != null);
@@ -139,17 +142,21 @@ public class Videos extends Thread {
 
             // Prompt the user for the ID of a channel to comment on.
             // Retrieve the channel ID that the user is commenting to.
-            System.out.println("Inserting videos from channel: " + channelName + " -- id: " + channelId);
             List<Video> videos = getVideos(channelId, datePublishedAfter);
-            String query = "INSERT INTO \"prdwa17_staging\".\"videos\" " +
-                    "(\"id\", \"channelid\", \"title\", \"description\", \"publishedat\"," +
-                    " \"viewcount\", \"commentcount\", \"likecount\", \"dislikecount\", " +
-                    "\"favoritecount\", \"categoryid\", \"topiccategory_1\", \"topiccategory_2\", " +
-                    "\"topiccategory_3\", \"fetchedat\", \"screenshot\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
- 	
- 
-            PreparedStatement ps = conn.prepareStatement(query);
-            int count = 0;
+            List<Video> toBeRemoved = new ArrayList<>();
+            for(Video video : videos) {
+                for(Video video1 : videos) {
+                    if(video.getId().equals(video1.getId()) && video != video1) {
+                        System.out.println("WARNING: We got video " +
+                                video.getId() + " twice. Only keeping one them");
+                        toBeRemoved.add(video);
+                    }
+                }
+            }
+            System.out.println("WARNING: Removing " + toBeRemoved.size() + " videos");
+            videos.removeAll(toBeRemoved);
+
+            System.out.println("Start Inserting " + videos.size() + " videos from channel: " + channelName + " -- id: " + channelId);
             for(Video video : videos){
                 ps.setString(1, video.getId());
                 ps.setString(2, video.getSnippet().getChannelId());
@@ -205,58 +212,27 @@ public class Videos extends Thread {
 
                 java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
                 ps.setTimestamp(12+i, currentTimestamp);
-                ps.setString(12+i+1, video.getId()+currentTimestamp.toString());
-                //System.out.println(ps.toString());
-                boolean res = ps.execute();
-                count++;
-                if(count % 50 == 0)
-                    System.out.println("Have inserted" + count + " videos for channel: " + channelId);
-
-                //System.out.println("inserted video: " + res);
-                /*try {
-                    List<String> tags = video.getSnippet().getTags();
-                    int nbtags = tags.size();
-                    System.out.println("Inserting tags of the video" + video.getId() + " and channel " + channelName + " into the table");
-                    String query1 = "INSERT INTO \"prdwa17_staging\".\"youtubetags\" (\"id\", \"title\", \"videoid\") VALUES (?,?,?)";
-                    PreparedStatement pstag = conn.prepareStatement(query1);
-
-                    for (i = 0; i < nbtags; i++) {
-                        try {
-                            try {
-                                pstag.setString(1, UUID.randomUUID().toString());
-                            } catch(NullPointerException e) {
-                                ps.setString(1,"");
-                            }
-                            try {
-                                pstag.setString(2, tags.get(i));
-                            } catch(NullPointerException e) {
-                                ps.setString(2,"");
-                            }
-                            try {
-                                pstag.setString(3, video.getId());
-                            } catch(NullPointerException e) {
-                                ps.setString(3,"");
-                            }
-                            boolean res1 = pstag.execute();
-
-                        } catch (IndexOutOfBoundsException e) {
-                            System.out.println("Error: Invalid tag for video " + video.getId() +
-                                    "(" + video.getSnippet().getTitle() + ")");
-                        }
-                    }
-                } catch(NullPointerException e) {
-                    System.out.println("Error inserting Tags : Probably no tags for video " +
-                            video.getId() + " (" + video.getSnippet().getTitle()+ ")");
-                }*/
-                    //System.out.println(pstag.toString());
-                //System.out.println("inserted tag: " + res1);
-                /*
+                ps.setString(12+i+1, video.getContentDetails().getDuration());
+                ps.addBatch();
+//                count++;
+//                if(count % 500 == 0) {
+//                    System.out.println("Execute Insert query for videos of channel: " + channelName+"(" + channelId + ")");
+//                    int[] res = ps.executeBatch();
+//                    ps.clearBatch(); // just to be cautious
+//                    System.out.println("(Videos) Insert results: " + res[0]);
+//                    System.out.println("Have inserted " + count + " videos for channel: " + channelName+"(" + channelId + ")");
+//                    insertDone = true;
+//                }
                 System.out.println("New Thread to load comments of video " + video.getId());
                 CommentThreads commentThreadsThread = new CommentThreads(video.getId(), video.getSnippet().getTitle());
                 commentThreadsThread.start();
-                System.out.println("--------------------------------- END AT : "  + new Date() + " ----------------------------");
-                */
             }
+
+            System.out.println("Execute insert query for videos of channel: " + channelName+"(" + channelId + ")");
+            int[] res = ps.executeBatch();
+            ps.clearBatch(); // just to be cautious
+            System.out.println("(Videos) Insert results: " + res[0]);
+            System.out.println("Have inserted " + videos.size() + " videos for channel: " + channelName+"(" + channelId + ")");
         } catch (GoogleJsonResponseException e) {
             System.err.println("GoogleJsonResponseException code: " + e.getDetails().getCode()
                     + " : " + e.getDetails().getMessage());
@@ -271,7 +247,7 @@ public class Videos extends Thread {
         }
 
     }
-    
+
 
 }
 

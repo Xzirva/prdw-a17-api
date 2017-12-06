@@ -5,7 +5,7 @@ import java.sql.*;
 public class AsterDatabaseInterface {
     public static Connection conn;
     static {
-        String connurl = "jdbc:ncluster://192.168.100.220:2406/beehive,tmode=ANSI,charset=UTF8";
+        String connurl = "jdbc:ncluster://192.168.100.220:2406/beehive,tmode=ANSI,charset=UTF8?allowMultiQueries=true";
 
         try {
             Class.forName("com.asterdata.ncluster.Driver");
