@@ -16,10 +16,8 @@ package com.google.api.services.samples.youtube.cmdline.data;
 
 import java.io.*;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Calendar;
+import java.util.*;
 import java.util.Date;
-import java.util.List;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
@@ -30,8 +28,10 @@ import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.*;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
+import sun.plugin.com.event.COMEventHandler;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * This sample creates and manages top-level comments by:
@@ -52,6 +52,7 @@ public class CommentThreads extends Thread {
     private static YouTube youtube;
     private String videoId;
     private String videoTitle;
+    private static PreparedStatement ps;
     public CommentThreads(String videoId, String videoTitle) {
         this.videoId = videoId;
         this.videoTitle = videoTitle;
@@ -59,6 +60,12 @@ public class CommentThreads extends Thread {
     static {
         try {
             conn = AsterDatabaseInterface.connect();
+            String query = " INSERT INTO \"prdwa17_staging\".\"videoscomments\" " +
+                    "(\"id\", \"authorchannelurl\", " +
+                    "\"authordisplayedname\", \"authorchannelid\", \"videoid\", " +
+                    "\"parentid\", \"textoriginal\", \"likecount\", \"publishedat\", " +
+                    "\"fetchedat\") VALUES (?,?,?,?,?,?,?,?,?,?);";
+            ps = conn.prepareStatement(query);
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         } catch (SQLException e) {
@@ -86,13 +93,12 @@ public class CommentThreads extends Thread {
     public void run() {
         Stopwatch stopwatch = Stopwatch.createStarted();
 
-        //String videoId = "AZ8mB-eudv0";
-        int count = insertComments(videoId);
+        insertComments(videoId);
         stopwatch.stop(); // optional
 
-        long millis = stopwatch.elapsed(MILLISECONDS);
-        System.out.println("------------------Fetched " + count + " Comments of video " + videoTitle + " -- " + videoId + stopwatch + "-------------------");
-        System.out.println( "--------------------------------- END AT: "  + new Date() + "----------------------------");
+        long millis = stopwatch.elapsed(SECONDS);
+        System.out.println("------------------ Inserted Comments of video " + videoTitle + "(" + videoId + ")" + " within " + millis + " s -------------------");
+        System.out.println( "--------------------------------- END AT: "  + new Date() + " ----------------------------");
 
     }
 
@@ -100,8 +106,8 @@ public class CommentThreads extends Thread {
         CommentThreadListResponse CommentsListResponse;
         String nextPageToken = "";
         List<CommentThread> comments = new ArrayList<CommentThread>();
+        System.out.println("Fetching CommentsThreads of video " + videoTitle + " -- " + videoId);
         while (nextPageToken != null) {
-            System.out.println("Fetching CommentsThreads of video " + videoTitle + " -- " + videoId);
             if (type.equals("video"))
                 CommentsListResponse = (nextPageToken.equals("") ? youtube.commentThreads().list("id,snippet,replies")
                         .setVideoId(parentId).setTextFormat("plaintext").setOrder("time").execute() :
@@ -113,56 +119,89 @@ public class CommentThreads extends Thread {
                         youtube.commentThreads().list("snippet").setPageToken(nextPageToken)
                                 .setChannelId(parentId).setOrder("time").execute());
             comments.addAll(CommentsListResponse.getItems());
-            System.out.println("Total Results: " + CommentsListResponse.getPageInfo().getTotalResults() + "/" +
-                    "\nCurrentPageResult: " + CommentsListResponse.getPageInfo().getResultsPerPage());
+
             nextPageToken = CommentsListResponse.getNextPageToken();
         }
+        System.out.println("Fetched " + comments.size() + " comments for video " + videoTitle + "(" + videoId +")" );
         return comments;
     }
 
-    public int insertComments(String videoId) {
-        int count = 0;
+    private void insertComments(String videoId) {
         try {
 
             // Prompt the user for the ID of a channel to comment on.
             // Retrieve the channel ID that the user is commenting to.
-            System.out.println("Inserting videos from channel: " + videoId);
             List<CommentThread> comments = getCommentThreads(videoId, "video");
-            System.out.println("Inserting Comments for videos: " + videoId);
-            String query = " INSERT INTO \"prdwa17_staging\".\"videoscomments\" (\"id\", \"authorchannelurl\", " +
-                    "\"authordisplayedname\", \"authorchannelid\", \"videoid\", " +
-                    "\"parentid\", \"textoriginal\", \"likecount\", \"publishedat\", " +
-                    "\"fetchedat\", \"screenshot\") VALUES (?,?,?,?,?,?,?,?,?,?,?);";
 
-            for (CommentThread c : comments) {
-                PreparedStatement ps = conn.prepareStatement(query);
-                Comment topC = c.getSnippet().getTopLevelComment();
-                ps.setString(1, topC.getId());
-                ps.setString(2, topC.getSnippet().getAuthorChannelUrl());
-                ps.setString(3, topC.getSnippet().getAuthorDisplayName());
-                ps.setString(4, topC.getSnippet().getAuthorChannelId().toString());
-                ps.setString(5, topC.getSnippet().getVideoId());
-                ps.setString(6, "");
-                ps.setString(7, topC.getSnippet().getTextOriginal());
-                ps.setLong(8, topC.getSnippet().getLikeCount());
-                ps.setTimestamp(9, new Timestamp(topC.getSnippet().getPublishedAt().getValue()));
-
-                java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
-                ps.setTimestamp(10, currentTimestamp);
-                ps.setString(11, topC.getId()+currentTimestamp.toString());
-
-                count++;
-                //System.out.println(ps.toString());
-                if(count % 30 == 0)
-                    System.out.println("Have inserted" + count + " comments for video: " + videoId);
-                boolean res = ps.execute();
-//                System.out.println("inserted: " + res);
+            List<Comment> topComments = new ArrayList<>();
+            for(CommentThread comment : comments) {
+                topComments.add(comment.getSnippet().getTopLevelComment());
             }
+
+            List<Comment> toBeRemoved = new ArrayList<>();
+            for(Comment comment : topComments) {
+                for(Comment comment1: topComments) {
+                    if(comment.getId().equals(comment1.getId())
+                            && comment != comment1) {
+                        System.out.println("WARNING: We got comment " +
+                                comment.getId() + " twice. Only keeping one them");
+                        toBeRemoved.add(comment);
+                    }
+                }
+            }
+            System.out.println("WARNING: Removing " + toBeRemoved.size() + " comments");
+            topComments.removeAll(toBeRemoved);
+            System.out.println("Start Inserting " + topComments.size() + " Comments for video: " + videoId);
+            boolean ignore = false;
+            for (Comment topC : topComments) {
+                for(Comment seen : toBeRemoved) {
+                    if(seen.getSnippet().getTextOriginal().equals(topC.getSnippet().getTextOriginal()))  {
+                        System.out.println("Copy of: " + topC.getId() + " for: " + videoId);
+                        ignore = true;
+                        break;
+                    }
+                }
+                if(!ignore) {
+                    try {
+                        ps.setString(1, (String) populate(topC.getId()));
+                        ps.setString(2, (String) populate(topC.getSnippet().getAuthorChannelUrl()));
+                        ps.setString(3, (String) populate(topC.getSnippet().getAuthorDisplayName()));
+                        ps.setString(4, (String) populate(topC.getSnippet().getAuthorChannelId().toString()));
+                        ps.setString(5, (String) populate(topC.getSnippet().getVideoId()));
+                        ps.setString(6, "");
+                        ps.setString(7, (String) populate(topC.getSnippet().getTextOriginal()));
+                        ps.setLong(8, (Long) populate(topC.getSnippet().getLikeCount()));
+                        ps.setTimestamp(9, new Timestamp((Long) populate(topC.getSnippet().getPublishedAt().getValue())));
+
+                        java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
+                        ps.setTimestamp(10, currentTimestamp);
+                        ps.addBatch();
+                    } catch (SQLException e) {
+                        System.out.println("Comment Ignored: " + topC.getId());
+                    }
+                    toBeRemoved.add(topC);
+                }
+
+            }
+            //if(!insertDone) {
+            System.out.println("Execute Insert query for CommentThreads of video: " + videoId);
+            int[] res = ps.executeBatch();
+            try {
+                System.out.println("(CommentThreads) Insert results: " + res[0]);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                System.out.printf("ArrayIndexOutOfBoundsException: Something went wrong inserting comments for video: " + videoId);
+            }
+            ps.clearBatch();
+            System.out.println("Have inserted " + comments.size() + " comments for video: " + videoId );
+            //}
         } catch (SQLException e) {
+            System.out.printf("SQLException: Something went wrong inserting comments for video: " + videoId);
             e.printStackTrace();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.printf("IOException: Something went wrong inserting comments for video: " + videoId);
         }
-        return count;
+    }
+    private Object populate(Object original) {
+        return (original != null ? original : "");
     }
 }

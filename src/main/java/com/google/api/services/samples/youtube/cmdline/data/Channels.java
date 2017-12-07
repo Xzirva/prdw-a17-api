@@ -15,6 +15,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -29,9 +31,16 @@ public class Channels {
     private static int count = 0;
     private static Connection conn;
     public static DateTime datePublishedAfter = Tools.getDateTime();
+    private static PreparedStatement ps;
+    private static final String query = " INSERT INTO \"prdwa17_staging\".\"channels\" (\"id\", \"title\", \"description\", \"publishedat\", " +
+            "\"viewcount\", \"commentcount\", \"subscribercount\", " +
+            "\"videocount\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\", " +
+            "\"keywords\", \"fetchedat\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);";
+
     static {
         try {
             conn = AsterDatabaseInterface.connect();
+            ps = conn.prepareStatement(query);
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         } catch (SQLException e) {
@@ -53,71 +62,74 @@ public class Channels {
                 .setApplicationName("youtube-cmdline-channels-sample").build();
 
     }
-    // z225wn4wcryfyzxro04t1aokgkd4frmqh0y0xuwpyqaxbk0h00410
-    public static Channel insertChannel(String channelName) {
-        try {
 
-            // Prompt the user for the ID of a channel to comment on.
-            // Retrieve the channel ID that the user is commenting to.
-            System.out.println("Inserting channel: " + channelName);
-            Channel channel = getChannel(channelName);
-            String query = " INSERT INTO \"prdwa17_staging\".\"channels\" (\"id\", \"title\", \"description\", \"publishedat\", " +
-                    "\"viewcount\", \"commentcount\", \"subscribercount\", " +
-                    "\"videocount\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\", " +
-                    "\"keywords\", \"fetchedat\", \"screenshot\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
-            PreparedStatement ps = conn.prepareStatement(query);
-            ps.setString(1, channel.getId());
-            ps.setString(2, channel.getSnippet().getTitle() );
-            ps.setString(3, channel.getSnippet().getDescription());
-            ps.setTimestamp(4, new Timestamp(channel.getSnippet().getPublishedAt().getValue()));
-            ps.setLong (5, Long.parseLong(channel.getStatistics().getViewCount().toString()));
-            ps.setLong(6, Long.parseLong(channel.getStatistics().getCommentCount().toString()));
-            ps.setLong(7, Long.parseLong(channel.getStatistics().getSubscriberCount().toString()));
-            ps.setLong (8, Long.parseLong(channel.getStatistics().getVideoCount().toString()));
-            List<String> categories = channel.getTopicDetails().getTopicCategories();
-            for(int i = 0; i<3; i++) {
-                try {
-                    ps.setString(9+i, categories.get(i));
-                } catch (IndexOutOfBoundsException e) {
-                    ps.setString(9+i, "");
-                    ps.setString(9+i, "");
+
+    public static void insertChannel(List<Channel> listChannels) {
+        System.out.println("Setting query for channels");
+        for(Channel channel : listChannels) {
+            try {
+                // Prompt the user for the ID of a channel to comment on.
+                // Retrieve the channel ID that the user is commenting to.
+
+                ps.setString(1, channel.getId());
+                ps.setString(2, channel.getSnippet().getTitle());
+                ps.setString(3, channel.getSnippet().getDescription());
+                ps.setTimestamp(4, new Timestamp(channel.getSnippet().getPublishedAt().getValue()));
+                ps.setLong(5, Long.parseLong(channel.getStatistics().getViewCount().toString()));
+                ps.setLong(6, Long.parseLong(channel.getStatistics().getCommentCount().toString()));
+                ps.setLong(7, Long.parseLong(channel.getStatistics().getSubscriberCount().toString()));
+                ps.setLong(8, Long.parseLong(channel.getStatistics().getVideoCount().toString()));
+                List<String> categories = channel.getTopicDetails().getTopicCategories();
+                for (int i = 0; i < 3; i++) {
+                    try {
+                        ps.setString(9 + i, categories.get(i));
+                    } catch (IndexOutOfBoundsException e) {
+                        ps.setString(9 + i, "");
+                        ps.setString(9 + i, "");
+                    }
+
                 }
-
+                ps.setString(12, channel.getBrandingSettings().getChannel().getKeywords());
+                java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
+                ps.setTimestamp(13, currentTimestamp);
+                ps.addBatch();
+            } catch (Throwable t) {
+                System.err.println("Throwable: " + t.getMessage());
+                t.printStackTrace();
             }
-            ps.setString(12, channel.getBrandingSettings().getChannel().getKeywords());
-            java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
-            ps.setTimestamp(13, currentTimestamp);
-            ps.setString(14, channel.getId()+currentTimestamp.toString());
-
-            boolean res = ps.execute();
-//            System.out.println("inserted: " + res);
-            return channel;
-        } catch (GoogleJsonResponseException e) {
-            System.err.println("GoogleJsonResponseException code: " + e.getDetails().getCode()
-                    + " : " + e.getDetails().getMessage());
-            e.printStackTrace();
-
-        } catch (IOException e) {
-            System.err.println("IOException: " + e.getMessage());
-            e.printStackTrace();
-        } catch (Throwable t) {
-            System.err.println("Throwable: " + t.getMessage());
-            t.printStackTrace();
         }
-        return null;
+        System.out.println("Inserting Channels: " + listChannels.size());
 
+        try {
+            int[] res = ps.executeBatch();
+            System.out.println("Channels inserted: " + res);
+        } catch (SQLException e) {
+            System.out.println("-------------------------/!\\---------------------------");
+            System.out.println("Something went wrong inserting channels");
+            System.out.println("-------------------------/!\\---------------------------");
+        }
     }
     public static void main(String[] args) throws ClassNotFoundException, SQLException {
         Stopwatch stopwatch = Stopwatch.createStarted();
+        List<Channel> listChannels = new ArrayList<>();
         for(String ch : args){
             try {
-                Channel channel = insertChannel(ch);
-                System.out.println("New Thread to load videos of channel " + ch + " -- " +  channel.getId());
-                Videos videoThread = new Videos(channel.getId(), ch, datePublishedAfter);
-                videoThread.start();
+                listChannels.add(getChannel(ch));
             } catch (NullPointerException e) {
                 System.out.println(new Date() + " - NullPointerException with channel" + ch);
+            } catch (Exception e) {
+                System.out.println("-------------------------/!\\-----------------------");
+                System.out.println("Something wen wrong with channel: " + ch + "");
+                System.out.println("-------------------------/!\\-----------------------");
             }
+        }
+
+        insertChannel(listChannels);
+
+        for(Channel channel : listChannels) {
+            System.out.println("New Thread to load videos of channel " + channel.getSnippet().getTitle() + " -- " +  channel.getId());
+            Videos videoThread = new Videos(channel.getId(), channel.getSnippet().getTitle(), datePublishedAfter);
+            videoThread.start();
         }
         stopwatch.stop(); // optional
 
