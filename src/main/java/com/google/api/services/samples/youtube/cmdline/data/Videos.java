@@ -23,7 +23,7 @@ import java.text.SimpleDateFormat;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
-
+// extends Thread
 public class Videos extends Thread {
 
     /**
@@ -35,7 +35,7 @@ public class Videos extends Thread {
     private static YouTube youtube;
     private String channelName;
     private DateTime datePublishedAfter;
-    private static final String query = "INSERT INTO \"prdwa17_staging\".\"videos\" " +
+    private static final String query = "INSERT INTO \"prdwa17_staging\".\"videos_test\" " +
             "(\"id\", \"channelid\", \"title\", \"description\", \"publishedat\"," +
             " \"viewcount\", \"commentcount\", \"likecount\", \"dislikecount\", " +
             "\"favoritecount\", \"categoryid\", \"topiccategory_1\", \"topiccategory_2\", " +
@@ -139,9 +139,7 @@ public class Videos extends Thread {
 
     public void insertVideos() {
         try {
-
-            // Prompt the user for the ID of a channel to comment on.
-            // Retrieve the channel ID that the user is commenting to.
+            int ignoredCount  = 0;
             List<Video> videos = getVideos(channelId, datePublishedAfter);
             List<Video> toBeRemoved = new ArrayList<>();
             for(Video video : videos) {
@@ -157,82 +155,17 @@ public class Videos extends Thread {
             videos.removeAll(toBeRemoved);
 
             System.out.println("Start Inserting " + videos.size() + " videos from channel: " + channelName + " -- id: " + channelId);
-            for(Video video : videos){
-                ps.setString(1, video.getId());
-                ps.setString(2, video.getSnippet().getChannelId());
-                ps.setString(3, video.getSnippet().getTitle());
-                ps.setString(4, video.getSnippet().getDescription());
-                ps.setTimestamp(5, new Timestamp(video.getSnippet().getPublishedAt().getValue()));
-                try {
-                    ps.setLong(6, Long.parseLong(video.getStatistics().getViewCount().toString()));
-                } catch(NullPointerException e) {
-                    ps.setLong(6,0);
-                }
-                try {
-                    ps.setLong(7, Long.parseLong(video.getStatistics().getCommentCount().toString()));
-                } catch(NullPointerException e) {
-                    ps.setLong(7,0);
-                }
-                try {
-                    ps.setLong(8, Long.parseLong(video.getStatistics().getLikeCount().toString()));
-                } catch(NullPointerException e) {
-                    ps.setLong(8,0);
-                }
-                try {
-                    ps.setLong (9, Long.parseLong(video.getStatistics().getDislikeCount().toString()));
-                } catch(NullPointerException e) {
-                    ps.setLong(9,0);
-                }
-                try {
-                    ps.setLong (10, Long.parseLong(video.getStatistics().getFavoriteCount().toString()));
-                } catch(NullPointerException e) {
-                    ps.setLong(10,0);
-                }
-                try {
-                    ps.setString(11, video.getSnippet().getCategoryId());
-                } catch(NullPointerException e) {
-                    ps.setString(11,"");
-                }
-                int i;
-                List<String> categories;
-                try {
-                    categories = video.getTopicDetails().getTopicCategories();
-                    for(i = 0;i<3; i++) {
-                        try {
-                            ps.setString(12+i, categories.get(i));
-                        }catch (IndexOutOfBoundsException e) {
-                            ps.setString(12+i, "");
-                        }
-                    }
-                } catch (NullPointerException e) {
-                    for(i = 0;i<3; i++) {
-                        ps.setString(12+i, "");
-                    }
-                }
-
-                java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
-                ps.setTimestamp(12+i, currentTimestamp);
-                ps.setString(12+i+1, video.getContentDetails().getDuration());
-                ps.addBatch();
-//                count++;
-//                if(count % 500 == 0) {
-//                    System.out.println("Execute Insert query for videos of channel: " + channelName+"(" + channelId + ")");
-//                    int[] res = ps.executeBatch();
-//                    ps.clearBatch(); // just to be cautious
-//                    System.out.println("(Videos) Insert results: " + res[0]);
-//                    System.out.println("Have inserted " + count + " videos for channel: " + channelName+"(" + channelId + ")");
-//                    insertDone = true;
-//                }
-                System.out.println("New Thread to load comments of video " + video.getId());
-                CommentThreads commentThreadsThread = new CommentThreads(video.getId(), video.getSnippet().getTitle());
-                commentThreadsThread.start();
-            }
-
+            insertUntilDone(videos);
+            //|| video.getId().equals("K8QdHuZJaPU") || video.getId().equals("HZcaCpbLqxg")
             System.out.println("Execute insert query for videos of channel: " + channelName+"(" + channelId + ")");
             int[] res = ps.executeBatch();
             ps.clearBatch(); // just to be cautious
-            System.out.println("(Videos) Insert results: " + res[0]);
-            System.out.println("Have inserted " + videos.size() + " videos for channel: " + channelName+"(" + channelId + ")");
+            try {
+                System.out.println("(Videos) Insert results: " + res[0]);
+            } catch(ArrayIndexOutOfBoundsException e) {
+                System.out.println("ArrayIndexOutOfBoundsException: Something went wrong inserting videos for channel: " + channelId);
+            }
+                System.out.println("Have inserted " + videos.size() + " videos for channel: " + channelName+"(" + channelId + ")");
         } catch (GoogleJsonResponseException e) {
             System.err.println("GoogleJsonResponseException code: " + e.getDetails().getCode()
                     + " : " + e.getDetails().getMessage());
@@ -248,6 +181,87 @@ public class Videos extends Thread {
 
     }
 
+    private void insertUntilDone(List<Video> videos) {
+        int ignoredCount = 0;
+        List<Video> remainingVideos = new ArrayList<>();
+        for(Video video : videos){
+            try {
+            ps.setString(1, Tools.convertToUTF8(video.getId()));
+            ps.setString(2, Tools.convertToUTF8(video.getSnippet().getChannelId()));
+            ps.setString(3, Tools.convertToUTF8(video.getSnippet().getTitle()));
+            ps.setString(4, Tools.convertToUTF8(video.getSnippet().getDescription()));
+            ps.setTimestamp(5, new Timestamp(video.getSnippet().getPublishedAt().getValue()));
+            try {
+                ps.setLong(6, Long.parseLong(video.getStatistics().getViewCount().toString()));
+            } catch(NullPointerException e) {
+                ps.setLong(6,0);
+            }
+            try {
+                ps.setLong(7, Long.parseLong(video.getStatistics().getCommentCount().toString()));
+            } catch(NullPointerException e) {
+                ps.setLong(7,0);
+            }
+            try {
+                ps.setLong(8, Long.parseLong(video.getStatistics().getLikeCount().toString()));
+            } catch(NullPointerException e) {
+                ps.setLong(8,0);
+            }
+            try {
+                ps.setLong (9, Long.parseLong(video.getStatistics().getDislikeCount().toString()));
+            } catch(NullPointerException e) {
+                ps.setLong(9,0);
+            }
+            try {
+                ps.setLong (10, Long.parseLong(video.getStatistics().getFavoriteCount().toString()));
+            } catch(NullPointerException e) {
+                ps.setLong(10,0);
+            }
+            try {
+                ps.setString(11, Tools.convertToUTF8(video.getSnippet().getCategoryId()));
+            } catch(NullPointerException e) {
+                ps.setString(11,"");
+            }
+            int i;
+            List<String> categories;
+            try {
+                categories = video.getTopicDetails().getTopicCategories();
+                for(i = 0;i<3; i++) {
+                    try {
+                        ps.setString(12+i, Tools.convertToUTF8(categories.get(i)));
+                    }catch (IndexOutOfBoundsException e) {
+                        ps.setString(12+i, "");
+                    }
+                }
+            } catch (NullPointerException e) {
+                for(i = 0;i<3; i++) {
+                    ps.setString(12+i, "");
+                }
+            }
 
+                java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
+                ps.setTimestamp(12 + i, currentTimestamp);
+                ps.setString(12 + i + 1, Tools.convertToUTF8((video.getContentDetails().getDuration() != null ?
+                        video.getContentDetails().getDuration() : "PT0M0S")));
+                ps.addBatch();
+                //if(video.getId().equals("K8QdHuZJaPU") || video.getId().equals("HZcaCpbLqxg")) {
+                System.out.println("New Thread to load comments of video " + video.getId());
+                CommentThreads commentThreadsThread = new CommentThreads(video.getId(), video.getSnippet().getTitle());
+                commentThreadsThread.start();
+                //}
+            } catch (SQLException e) {
+                remainingVideos.add(video);
+                System.out.println("Video Ignored: " + video.getId() + " from channel " + channelId);
+                ignoredCount++;
+            }
+        }
+
+        if(ignoredCount > 0) {
+            System.out.println("INFO: Number of ignored videos: " + ignoredCount + " for channel " + channelId);
+            insertUntilDone(remainingVideos);
+        }
+        else {
+            System.out.println("INFO: AddBatch videos done for channel " + channelId);
+        }
+    }
 }
 

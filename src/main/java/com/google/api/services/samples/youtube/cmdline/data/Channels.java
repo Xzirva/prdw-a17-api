@@ -28,11 +28,10 @@ public class Channels {
      * YouTube Data API requests.
      */
     private static YouTube youtube;
-    private static int count = 0;
     private static Connection conn;
     public static DateTime datePublishedAfter = Tools.getDateTime();
     private static PreparedStatement ps;
-    private static final String query = " INSERT INTO \"prdwa17_staging\".\"channels\" (\"id\", \"title\", \"description\", \"publishedat\", " +
+    private static final String query = " INSERT INTO \"prdwa17_staging\".\"channels_test\" (\"id\", \"title\", \"description\", \"publishedat\", " +
             "\"viewcount\", \"commentcount\", \"subscribercount\", " +
             "\"videocount\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\", " +
             "\"keywords\", \"fetchedat\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);";
@@ -71,9 +70,9 @@ public class Channels {
                 // Prompt the user for the ID of a channel to comment on.
                 // Retrieve the channel ID that the user is commenting to.
 
-                ps.setString(1, channel.getId());
-                ps.setString(2, channel.getSnippet().getTitle());
-                ps.setString(3, channel.getSnippet().getDescription());
+                ps.setString(1, Tools.convertToUTF8(channel.getId()));
+                ps.setString(2, Tools.convertToUTF8(channel.getSnippet().getTitle()));
+                ps.setString(3, Tools.convertToUTF8(channel.getSnippet().getDescription()));
                 ps.setTimestamp(4, new Timestamp(channel.getSnippet().getPublishedAt().getValue()));
                 ps.setLong(5, Long.parseLong(channel.getStatistics().getViewCount().toString()));
                 ps.setLong(6, Long.parseLong(channel.getStatistics().getCommentCount().toString()));
@@ -82,14 +81,14 @@ public class Channels {
                 List<String> categories = channel.getTopicDetails().getTopicCategories();
                 for (int i = 0; i < 3; i++) {
                     try {
-                        ps.setString(9 + i, categories.get(i));
+                        ps.setString(9 + i, Tools.convertToUTF8(categories.get(i)));
                     } catch (IndexOutOfBoundsException e) {
                         ps.setString(9 + i, "");
                         ps.setString(9 + i, "");
                     }
 
                 }
-                ps.setString(12, channel.getBrandingSettings().getChannel().getKeywords());
+                ps.setString(12, Tools.convertToUTF8(channel.getBrandingSettings().getChannel().getKeywords()));
                 java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
                 ps.setTimestamp(13, currentTimestamp);
                 ps.addBatch();

@@ -5,6 +5,7 @@ import com.google.api.services.samples.youtube.cmdline.data.Channels;
 import com.google.api.services.samples.youtube.cmdline.data.Tools;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.util.Calendar;
 import java.util.Date;
@@ -14,7 +15,7 @@ public class Main {
     public static void main(String[] args) throws SQLException, ClassNotFoundException, IOException {
         System.out.println("--------------------------------- START AT : "  + new Date() + "----------------------------");
         System.out.println("--------------------------------- Fetching data published after: " + Tools.getDateTime() + "-------");
-        //String[] ch = {"FoxNewsChannel"};
+        String[] ch = {"FoxNewsChannel"};
 
         int noOfDays = 7; //i.e two weeks
         Calendar calendar = Calendar.getInstance();
@@ -28,6 +29,7 @@ public class Main {
         } else {
             System.out.println("Keep fetching data for videos published after " + latestUpdate);
         }
-        Channels.main(args);
+        Channels.main(ch);
+        //System.out.println("CHarset: " + Charset.defaultCharset());
     }
 }

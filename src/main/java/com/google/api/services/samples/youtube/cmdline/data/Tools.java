@@ -82,4 +82,14 @@ public class Tools {
             return null;
         }
     }
+
+    public static String convertToUTF8(String str) {
+        try{
+            byte[] bytes = str.getBytes();
+            return new String(bytes, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            System.out.println("Couldn't encode: " + str);
+            return str;
+        }
+    }
 }
