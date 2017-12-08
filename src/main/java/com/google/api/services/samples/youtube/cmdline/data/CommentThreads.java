@@ -28,7 +28,7 @@ import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.*;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
-import sun.plugin.com.event.COMEventHandler;
+//import sun.plugin.com.event.COMEventHandler;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
