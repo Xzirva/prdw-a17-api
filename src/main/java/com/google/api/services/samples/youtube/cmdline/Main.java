@@ -15,7 +15,7 @@ public class Main {
     public static void main(String[] args) throws SQLException, ClassNotFoundException, IOException {
         System.out.println("--------------------------------- START AT : "  + new Date() + "----------------------------");
         System.out.println("--------------------------------- Fetching data published after: " + Tools.getDateTime() + "-------");
-        String[] ch = {"FoxNewsChannel"};
+        //String[] ch = {"FoxNewsChannel"};
 
         int noOfDays = 7; //i.e two weeks
         Calendar calendar = Calendar.getInstance();
@@ -23,13 +23,13 @@ public class Main {
         calendar.add(Calendar.DAY_OF_YEAR, -noOfDays);
         System.out.println("Calendar Date: " + calendar.getTime().getTime());
         System.out.println("Latest Update: " + latestUpdate);
-        if(latestUpdate.getValue() < calendar.getTime().getTime()) {
+        /*if(latestUpdate.getValue() < calendar.getTime().getTime()) {
             System.out.println("...........Setting threshold date for next download..........");
             Tools.writeLog();
         } else {
             System.out.println("Keep fetching data for videos published after " + latestUpdate);
-        }
-        Channels.main(ch);
+        }*/
+        Channels.main(args);
         //System.out.println("CHarset: " + Charset.defaultCharset());
     }
 }

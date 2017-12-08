@@ -57,7 +57,7 @@ public class CommentThreads extends Thread {
     static {
         try {
             conn = AsterDatabaseInterface.connect();
-            String query = " INSERT INTO \"prdwa17_staging\".\"videoscomments_test\" " +
+            String query = " INSERT INTO \"prdwa17_staging\".\"videoscomments_sybu\" " +
                     "(\"id\", \"authorchannelurl\", " +
                     "\"authordisplayedname\", \"authorchannelid\", \"videoid\", " +
                     "\"parentid\", \"textoriginal\", \"likecount\", \"publishedat\", " +

@@ -35,7 +35,7 @@ public class Videos extends Thread {
     private static YouTube youtube;
     private String channelName;
     private DateTime datePublishedAfter;
-    private static final String query = "INSERT INTO \"prdwa17_staging\".\"videos_test\" " +
+    private static final String query = "INSERT INTO \"prdwa17_staging\".\"videos_sybu\" " +
             "(\"id\", \"channelid\", \"title\", \"description\", \"publishedat\"," +
             " \"viewcount\", \"commentcount\", \"likecount\", \"dislikecount\", " +
             "\"favoritecount\", \"categoryid\", \"topiccategory_1\", \"topiccategory_2\", " +
@@ -244,9 +244,9 @@ public class Videos extends Thread {
                         video.getContentDetails().getDuration() : "PT0M0S")));
                 ps.addBatch();
                 //if(video.getId().equals("K8QdHuZJaPU") || video.getId().equals("HZcaCpbLqxg")) {
-                System.out.println("New Thread to load comments of video " + video.getId());
+                /*System.out.println("New Thread to load comments of video " + video.getId());
                 CommentThreads commentThreadsThread = new CommentThreads(video.getId(), video.getSnippet().getTitle());
-                commentThreadsThread.start();
+                commentThreadsThread.start();*/
                 //}
             } catch (SQLException e) {
                 remainingVideos.add(video);

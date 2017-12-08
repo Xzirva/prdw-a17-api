@@ -31,7 +31,7 @@ public class Channels {
     private static Connection conn;
     public static DateTime datePublishedAfter = Tools.getDateTime();
     private static PreparedStatement ps;
-    private static final String query = " INSERT INTO \"prdwa17_staging\".\"channels_test\" (\"id\", \"title\", \"description\", \"publishedat\", " +
+    private static final String query = " INSERT INTO \"prdwa17_staging\".\"channels_sybu\" (\"id\", \"title\", \"description\", \"publishedat\", " +
             "\"viewcount\", \"commentcount\", \"subscribercount\", " +
             "\"videocount\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\", " +
             "\"keywords\", \"fetchedat\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);";
