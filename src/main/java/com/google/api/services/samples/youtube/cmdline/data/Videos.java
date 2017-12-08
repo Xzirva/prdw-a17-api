@@ -35,7 +35,7 @@ public class Videos extends Thread {
     private static YouTube youtube;
     private String channelName;
     private DateTime datePublishedAfter;
-    private static final String query = "INSERT INTO \"prdwa17_staging\".\"videos_test\" " +
+    private static final String query = "INSERT INTO \"prdwa17_staging\".\"videos\" " +
             "(\"id\", \"channelid\", \"title\", \"description\", \"publishedat\"," +
             " \"viewcount\", \"commentcount\", \"likecount\", \"dislikecount\", " +
             "\"favoritecount\", \"categoryid\", \"topiccategory_1\", \"topiccategory_2\", " +
