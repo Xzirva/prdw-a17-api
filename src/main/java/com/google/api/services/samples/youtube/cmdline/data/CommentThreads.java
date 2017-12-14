@@ -22,6 +22,7 @@ import java.util.Date;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.services.samples.youtube.cmdline.AsterDatabaseInterface;
 import com.google.api.services.samples.youtube.cmdline.Auth;
+import com.google.api.services.samples.youtube.cmdline.Main;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.*;
 import com.google.common.base.Stopwatch;
@@ -155,6 +156,9 @@ public class CommentThreads extends Thread {
         } catch (IOException e) {
             System.out.println("IOException: Probably comments disabled for : " + videoId);
         }
+        System.out.println("----------------------------------------------------");
+        System.out.println("Still sleeping until next fetch");
+        System.out.println("----------------------------------------------------");
 
     }
 
@@ -179,10 +183,10 @@ public class CommentThreads extends Thread {
                 ps.setString(7, Tools.convertToUTF8(populate(topC.getSnippet().getTextOriginal())));
                 ps.setLong(8,
                         (topC.getSnippet().getLikeCount() != null ? topC.getSnippet().getLikeCount().intValue() : 0));
-                java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
+//                java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
 
                 ps.setTimestamp(9, new Timestamp(topC.getSnippet().getPublishedAt().getValue()));
-                ps.setTimestamp(10, currentTimestamp);
+                ps.setTimestamp(10, Main.thisTime);
                 ps.addBatch();
             } catch (SQLException e) {
                 //continued = true;

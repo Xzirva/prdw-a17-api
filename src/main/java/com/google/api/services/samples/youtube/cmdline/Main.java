@@ -12,6 +12,7 @@ import java.util.Date;
 
 public class Main {
     public static DateTime latestUpdate = Tools.getDateTime();
+    public static java.sql.Timestamp thisTime = new java.sql.Timestamp(new Date().getTime());
     public static void main(String[] args) throws SQLException, ClassNotFoundException, IOException {
         for(int i = 0; i<10; i++) {
             System.out.println("--------------------------------- START AT : " + new Date() + "----------------------------");
@@ -22,11 +23,12 @@ public class Main {
             Calendar calendar = Calendar.getInstance();
             calendar.setTime(new Date());
             calendar.add(Calendar.DAY_OF_YEAR, -noOfDays);
-            System.out.println("Calendar Date: " + calendar.getTime().getTime());
+            Date dateBefore7Days = calendar.getTime();
+            System.out.println("Calendar Date: " + dateBefore7Days.getTime());
             System.out.println("Latest Update: " + latestUpdate);
-            if (latestUpdate.getValue() < calendar.getTime().getTime()) {
+            if (latestUpdate.getValue() < dateBefore7Days.getTime()) {
                 System.out.println("...........Setting threshold date for next download..........");
-                Tools.writeLog();
+                Tools.writeLog(dateBefore7Days);
             } else {
                 System.out.println("Keep fetching data for videos published after " + latestUpdate);
             }
