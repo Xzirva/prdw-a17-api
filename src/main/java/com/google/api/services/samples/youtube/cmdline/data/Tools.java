@@ -26,15 +26,31 @@ public class Tools {
     public static void writeLog(Date nextFetchDate){
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yy HH:mm:ss");
         try {
-            BufferedWriter logWriter = new BufferedWriter(new FileWriter(" api.log"));
+            BufferedWriter logWriter = new BufferedWriter(new FileWriter("api.log"));
             logWriter.write(dateFormat.format(nextFetchDate));
             logWriter.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
+    public static void writeLogComments(){
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yy HH:mm:ss");
+        try {
+            BufferedWriter logWriter = new BufferedWriter(new FileWriter("api-comments.log"));
+            logWriter.write(dateFormat.format(new Date()));
+            logWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static DateTime getDateTime(){
         return getDateTime("api.log");
+    }
+
+    public static DateTime getDateTimeComments(){
+        return getDateTime("api-comments.log");
     }
 
     private static DateTime getDateTime(String filename){

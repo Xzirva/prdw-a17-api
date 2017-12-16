@@ -244,11 +244,11 @@ public class Videos extends Thread {
                 ps.setString(12 + i + 1, Tools.convertToUTF8((video.getContentDetails().getDuration() != null ?
                         video.getContentDetails().getDuration() : "PT0M0S")));
                 ps.addBatch();
-                //if(video.getId().equals("K8QdHuZJaPU") || video.getId().equals("HZcaCpbLqxg")) {
-                /*System.out.println("New Thread to load comments of video " + video.getId());
-                CommentThreads commentThreadsThread = new CommentThreads(video.getId(), video.getSnippet().getTitle());
-                commentThreadsThread.start();*/
-                //}
+                if(Main.fetchComments) {
+                    System.out.println("New Thread to load comments of video " + video.getId());
+                    CommentThreads commentThreadsThread = new CommentThreads(video.getId(), video.getSnippet().getTitle());
+                    commentThreadsThread.start();
+                }
             } catch (SQLException e) {
                 remainingVideos.add(video);
                 System.out.println("Video Ignored: " + video.getId() + " from channel " + channelId);
