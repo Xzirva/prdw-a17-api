@@ -6,6 +6,7 @@ import com.google.api.client.repackaged.com.google.common.base.Joiner;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.samples.youtube.cmdline.AsterDatabaseInterface;
 import com.google.api.services.samples.youtube.cmdline.Auth;
+import com.google.api.services.samples.youtube.cmdline.Main;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.*;
 import com.google.common.base.Stopwatch;
@@ -35,7 +36,7 @@ public class Videos extends Thread {
     private static YouTube youtube;
     private String channelName;
     private DateTime datePublishedAfter;
-    private static final String query = "INSERT INTO \"prdwa17_staging\".\"videos_test\" " +
+    private static final String query = "INSERT INTO \"prdwa17_staging\".\"videos\" " +
             "(\"id\", \"channelid\", \"title\", \"description\", \"publishedat\"," +
             " \"viewcount\", \"commentcount\", \"likecount\", \"dislikecount\", " +
             "\"favoritecount\", \"categoryid\", \"topiccategory_1\", \"topiccategory_2\", " +
@@ -238,16 +239,16 @@ public class Videos extends Thread {
                 }
             }
 
-                java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
-                ps.setTimestamp(12 + i, currentTimestamp);
+//                java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
+                ps.setTimestamp(12 + i, Main.thisTime);
                 ps.setString(12 + i + 1, Tools.convertToUTF8((video.getContentDetails().getDuration() != null ?
                         video.getContentDetails().getDuration() : "PT0M0S")));
                 ps.addBatch();
-                //if(video.getId().equals("K8QdHuZJaPU") || video.getId().equals("HZcaCpbLqxg")) {
-                System.out.println("New Thread to load comments of video " + video.getId());
-                CommentThreads commentThreadsThread = new CommentThreads(video.getId(), video.getSnippet().getTitle());
-                commentThreadsThread.start();
-                //}
+                if(Main.fetchComments) {
+                    System.out.println("New Thread to load comments of video " + video.getId());
+                    CommentThreads commentThreadsThread = new CommentThreads(video.getId(), video.getSnippet().getTitle());
+                    commentThreadsThread.start();
+                }
             } catch (SQLException e) {
                 remainingVideos.add(video);
                 System.out.println("Video Ignored: " + video.getId() + " from channel " + channelId);

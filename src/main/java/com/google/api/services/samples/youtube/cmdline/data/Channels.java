@@ -5,6 +5,7 @@ import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.samples.youtube.cmdline.AsterDatabaseInterface;
 import com.google.api.services.samples.youtube.cmdline.Auth;
+import com.google.api.services.samples.youtube.cmdline.Main;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.Channel;
 import com.google.api.services.youtube.model.ChannelListResponse;
@@ -31,7 +32,7 @@ public class Channels {
     private static Connection conn;
     public static DateTime datePublishedAfter = Tools.getDateTime();
     private static PreparedStatement ps;
-    private static final String query = " INSERT INTO \"prdwa17_staging\".\"channels_test\" (\"id\", \"title\", \"description\", \"publishedat\", " +
+    private static final String query = " INSERT INTO \"prdwa17_staging\".\"channels\" (\"id\", \"title\", \"description\", \"publishedat\", " +
             "\"viewcount\", \"commentcount\", \"subscribercount\", " +
             "\"videocount\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\", " +
             "\"keywords\", \"fetchedat\") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);";
@@ -89,8 +90,8 @@ public class Channels {
 
                 }
                 ps.setString(12, Tools.convertToUTF8(channel.getBrandingSettings().getChannel().getKeywords()));
-                java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
-                ps.setTimestamp(13, currentTimestamp);
+//                java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
+                ps.setTimestamp(13, Main.thisTime);
                 ps.addBatch();
             } catch (Throwable t) {
                 System.err.println("Throwable: " + t.getMessage());
