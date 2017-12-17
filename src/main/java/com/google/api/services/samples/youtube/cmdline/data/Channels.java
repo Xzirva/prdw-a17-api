@@ -23,15 +23,19 @@ import java.util.List;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-public class Channels {
+public class Channels extends Thread {
     /**
      * Define a global instance of a YouTube object, which will be used to make
      * YouTube Data API requests.
      */
-    private static YouTube youtube;
+    private YouTube youtube;
     private static Connection conn;
     public static DateTime datePublishedAfter = Tools.getDateTime();
+    public final java.sql.Timestamp thisTime = new java.sql.Timestamp(new Date().getTime());
+    private String client_secrets_filepath;
     private static PreparedStatement ps;
+    private String account;
+    private String[] args;
     private static final String query = " INSERT INTO \"prdwa17_staging\".\"channels\" (\"id\", \"title\", \"description\", \"publishedat\", " +
             "\"viewcount\", \"commentcount\", \"subscribercount\", " +
             "\"videocount\", \"topiccategory_1\", \"topiccategory_2\", \"topiccategory_3\", " +
@@ -46,25 +50,29 @@ public class Channels {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    public Channels(String[] args, String client_secrets_filepath, String account) {
+        this.args = args;
         // This OAuth 2.0 access scope allows for full read/write access to the
         // authenticated user's account and requires requests to use an SSL connection.
         List<String> scopes = Lists.newArrayList("https://www.googleapis.com/auth/youtube.force-ssl");
-
+        this.client_secrets_filepath = client_secrets_filepath;
         Credential credential = null;
         try {
-            credential = Auth.authorize(scopes, "channels");
+            credential = Auth.authorize(scopes, "channels" + account
+                    , client_secrets_filepath);
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        this.account = account;
         // This object is used to make YouTube Data API requests.
-        youtube = new YouTube.Builder(Auth.HTTP_TRANSPORT, Auth.JSON_FACTORY, credential)
+        this.youtube = new YouTube.Builder(Auth.HTTP_TRANSPORT, Auth.JSON_FACTORY, credential)
                 .setApplicationName("youtube-cmdline-channels-sample").build();
 
     }
 
-
-    public static void insertChannel(List<Channel> listChannels) {
+    public void insertChannel(List<Channel> listChannels) {
         System.out.println("Setting query for channels");
         for(Channel channel : listChannels) {
             try {
@@ -91,7 +99,7 @@ public class Channels {
                 }
                 ps.setString(12, Tools.convertToUTF8(channel.getBrandingSettings().getChannel().getKeywords()));
 //                java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
-                ps.setTimestamp(13, Main.thisTime);
+                ps.setTimestamp(13, thisTime);
                 ps.addBatch();
             } catch (Throwable t) {
                 System.err.println("Throwable: " + t.getMessage());
@@ -109,7 +117,7 @@ public class Channels {
             System.out.println("-------------------------/!\\---------------------------");
         }
     }
-    public static void main(String[] args) throws ClassNotFoundException, SQLException {
+    public void run() {
         Stopwatch stopwatch = Stopwatch.createStarted();
         List<Channel> listChannels = new ArrayList<>();
         for(String ch : args){
@@ -118,9 +126,10 @@ public class Channels {
             } catch (NullPointerException e) {
                 System.out.println(new Date() + " - NullPointerException with channel" + ch);
             } catch (Exception e) {
-                System.out.println("-------------------------/!\\-----------------------");
-                System.out.println("Something wen wrong with channel: " + ch + "");
-                System.out.println("-------------------------/!\\-----------------------");
+                e.printStackTrace();
+//                System.out.println("-------------------------/!\\-----------------------");
+//                System.out.println("Something wen wrong with channel: " + ch + "");
+//                System.out.println("-------------------------/!\\-----------------------");
             }
         }
 
@@ -128,17 +137,18 @@ public class Channels {
 
         for(Channel channel : listChannels) {
             System.out.println("New Thread to load videos of channel " + channel.getSnippet().getTitle() + " -- " +  channel.getId());
-            Videos videoThread = new Videos(channel.getId(), channel.getSnippet().getTitle(), datePublishedAfter);
+            Videos videoThread = new Videos(channel.getId(), channel.getSnippet().getTitle(),
+                    datePublishedAfter, client_secrets_filepath, thisTime, account);
             videoThread.start();
         }
         stopwatch.stop(); // optional
 
         long millis = stopwatch.elapsed(MILLISECONDS);
-        System.out.println("------------------Fetched Channels within: " + stopwatch + "-------------------");
+        System.out.println("------------------Fetched Channels within: " + stopwatch + " s-------------------");
 
     }
 
-    private static Channel getChannel(String username) throws Exception {
+    private Channel getChannel(String username) throws Exception {
         String parts = "snippet,statistics,contentDetails,topicDetails,brandingSettings";
         ChannelListResponse channelResponse = youtube.channels(). list(parts).setForUsername(username).execute();
         System.out.println("Fetching data about channel: " + username);

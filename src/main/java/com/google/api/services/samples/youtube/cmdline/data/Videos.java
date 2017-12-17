@@ -33,9 +33,12 @@ public class Videos extends Thread {
      */
     private static Connection conn;
     private String channelId;
-    private static YouTube youtube;
+    private YouTube youtube;
+    private String client_secrets_filepath;
+    private java.sql.Timestamp thisTime;
     private String channelName;
     private DateTime datePublishedAfter;
+    private String account;
     private static final String query = "INSERT INTO \"prdwa17_staging\".\"videos\" " +
             "(\"id\", \"channelid\", \"title\", \"description\", \"publishedat\"," +
             " \"viewcount\", \"commentcount\", \"likecount\", \"dislikecount\", " +
@@ -44,10 +47,29 @@ public class Videos extends Thread {
 
 
     private static PreparedStatement ps;
-    public Videos (String channelId, String channelName, DateTime datePublishedAfter) {
+    public Videos (String channelId, String channelName, DateTime datePublishedAfter,
+                   String client_secrets_filepath, Timestamp thisTime, String account) {
         this.channelId = channelId;
+        this.thisTime = thisTime;
         this.channelName = channelName;
         this.datePublishedAfter = datePublishedAfter;
+        this.account = account;
+        // This OAuth 2.0 access scope allows for full read/write access to the
+        // authenticated user's account and requires requests to use an SSL connection.
+        List<String> scopes = Lists.newArrayList("https://www.googleapis.com/auth/youtube.force-ssl");
+        this.client_secrets_filepath = client_secrets_filepath;
+        Credential credential = null;
+
+        try {
+            credential = Auth.authorize(scopes, "videos" + account
+                    , client_secrets_filepath);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // This object is used to make YouTube Data API requests.
+        youtube = new YouTube.Builder(Auth.HTTP_TRANSPORT, Auth.JSON_FACTORY, credential)
+                .setApplicationName("youtube-cmdline-commentthreads-sample").build();
     }
     static {
         try {
@@ -58,21 +80,6 @@ public class Videos extends Thread {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        // This OAuth 2.0 access scope allows for full read/write access to the
-        // authenticated user's account and requires requests to use an SSL connection.
-        List<String> scopes = Lists.newArrayList("https://www.googleapis.com/auth/youtube.force-ssl");
-
-        Credential credential = null;
-        try {
-            credential = Auth.authorize(scopes, "videos");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        // This object is used to make YouTube Data API requests.
-        youtube = new YouTube.Builder(Auth.HTTP_TRANSPORT, Auth.JSON_FACTORY, credential)
-                .setApplicationName("youtube-cmdline-commentthreads-sample").build();
-
     }
 
     /**
@@ -240,13 +247,14 @@ public class Videos extends Thread {
             }
 
 //                java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(new Date().getTime());
-                ps.setTimestamp(12 + i, Main.thisTime);
+                ps.setTimestamp(12 + i, thisTime);
                 ps.setString(12 + i + 1, Tools.convertToUTF8((video.getContentDetails().getDuration() != null ?
                         video.getContentDetails().getDuration() : "PT0M0S")));
                 ps.addBatch();
                 if(Main.fetchComments) {
                     System.out.println("New Thread to load comments of video " + video.getId());
-                    CommentThreads commentThreadsThread = new CommentThreads(video.getId(), video.getSnippet().getTitle());
+                    CommentThreads commentThreadsThread = new CommentThreads(video.getId(),
+                            video.getSnippet().getTitle(), client_secrets_filepath, thisTime, account);
                     commentThreadsThread.start();
                 }
             } catch (SQLException e) {
