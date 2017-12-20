@@ -41,7 +41,7 @@ buildNumber.properties
 *.zip
 *.tar.gz
 *.rar
+*.jar
 
 src/main/resources/
 vars
-[function(v) for v in vars]

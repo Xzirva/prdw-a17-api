@@ -147,16 +147,17 @@ public class Videos extends Thread {
 
     public void insertVideos() {
         try {
-            int ignoredCount  = 0;
             List<Video> videos = getVideos(channelId, datePublishedAfter);
             List<Video> toBeRemoved = new ArrayList<>();
+            HashMap<String, Integer> doubleCount = new HashMap<>();
+
             for(Video video : videos) {
-                for(Video video1 : videos) {
-                    if(video.getId().equals(video1.getId()) && video != video1) {
-                        System.out.println("WARNING: We got video " +
-                                video.getId() + " twice. Only keeping one them");
-                        toBeRemoved.add(video);
-                    }
+                if(doubleCount.get(video.getId()) != null && doubleCount.get(video.getId()) == 1) {
+                    System.out.println("WARNING: We got video " +
+                            video.getId() + " twice. Only keeping one them");
+                    toBeRemoved.add(video);
+                }else {
+                    doubleCount.put(video.getId(), 1);
                 }
             }
             System.out.println("WARNING: Removing " + toBeRemoved.size() + " videos");

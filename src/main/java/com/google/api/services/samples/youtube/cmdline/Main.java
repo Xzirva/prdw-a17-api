@@ -27,7 +27,7 @@ public class Main {
             String[] channels = new String[args.length - 1];
 
             System.arraycopy(args, 0, channels, 0, args.length - 1);
-            Account accountThread = new Account("/client_secrets_qr.json", channels);
+            Account accountThread = new Account("/client_secrets_lr.json", channels);
             accountThread.run();
             fetchComments = true;
         }else {
